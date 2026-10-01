@@ -1,0 +1,14 @@
+# Go
+/backend/bin/
+*.test
+*.out
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
