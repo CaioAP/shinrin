@@ -79,30 +79,27 @@ One Go codebase, one binary, two roles (`shinrin api` and `shinrin worker`). Loc
 
 ## 5. Backend (Go)
 
-Suggested layout:
+Hexagonal (ports and adapters) layout. The full rules, and how each future package fits, are in `docs/conventions.md`.
 
 ```
-cmd/shinrin/            main: `api`, `worker`, `migrate`, `backfill` subcommands
+cmd/shinrin/              composition root: `api`, `worker` (later `migrate`, `backfill`)
 internal/
-  config/               env config, secrets
-  db/                   sqlc-generated queries, migrations (goose or atlas)
-  domain/               Asset, Price, Fundamental, Score, Report types
-  sources/              one package per provider, all behind small interfaces
-    b3cotahist/  cvm/  sec/  bcb/  tesouro/  treasury/  fred/  finnhub/  brapi/  rss/
-  ingest/               jobs that call sources and upsert into Postgres
-  adjust/               split and dividend price adjustment
-  indicators/           technicals (SMA, EMA, RSI, MACD, volatility, drawdown)
-  scoring/              factor scores per asset class
-  profile/              risk profile questionnaire and allocation bands
-  llm/                  provider interface + adapters, prompt building, output validation
-  auth/                 sessions, password hashing, Google OAuth
-  crypto/               envelope encryption for user API keys
-  httpapi/              handlers, middleware, OpenAPI spec
+  domain/                 Asset, PriceBar, Quote, Fundamental, NewsItem, MacroPoint; later Score, Report
+  port/                   driving ports (use cases) and driven ports (sources, repositories, LLM)
+  app/                    application services, one package per area:
+    system/ catalog/      (now)   ingest/ scoring/ profile/ report/ auth/  (later)
+  adapter/in/             httpapi (REST); later River job handlers
+  adapter/out/            memory (now); later postgres, b3cotahist, cvm, sec, bcb, tesouro,
+                          treasury, fred, finnhub, brapi, rss, anthropic, openai, ollama, crypto
+  config/                 env config
+  archtest/               enforces the dependency rule
 ```
 
-Libraries (defaults, swappable): `chi` router, `pgx` driver, `sqlc` for typed SQL, `River` for jobs, `goose` for migrations, `slog` logging.
+Pure calculations (indicators, price adjustment, factor scoring) live in `domain` subpackages so they stay free of I/O and easy to test.
 
-**Source interface.** Each provider implements a small interface (e.g. `PriceSource`, `FundamentalsSource`, `NewsSource`). Every row stored keeps `source` and `fetched_at`, so the UI can credit sources and a paid provider can replace a free one without touching the rest.
+Libraries (defaults, swappable, used only inside adapters): standard library `net/http` router (Go 1.22 patterns; `chi` if we outgrow it), `pgx` driver, `sqlc` for typed SQL, `River` for jobs, `goose` for migrations, `slog` logging.
+
+**Source interface.** Each provider is a driven adapter implementing small ports from `internal/port/driven.go` (e.g. `PriceSource`, `FundamentalsSource`, `NewsSource`). Every row stored keeps `source` and `fetched_at`, so the UI can credit sources and a paid provider can replace a free one without touching the rest.
 
 ## 6. Data model (core tables)
 
