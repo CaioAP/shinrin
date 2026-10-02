@@ -40,3 +40,28 @@ func (s *Service) CorporateActionsRoutine(name string, m domain.Market, src port
 func (s *Service) FundamentalsRoutine(name string, m domain.Market, src port.FundamentalsSource) port.Routine {
 	return routine{name, func(ctx context.Context) error { _, err := s.SyncFundamentals(ctx, m, src); return err }}
 }
+
+// QuotesRoutine refreshes latest quotes for a market.
+func (s *Service) QuotesRoutine(name string, m domain.Market, src port.QuoteSource) port.Routine {
+	return routine{name, func(ctx context.Context) error { _, err := s.SyncQuotes(ctx, m, src); return err }}
+}
+
+// CompanyNewsRoutine syncs per-asset news for a market.
+func (s *Service) CompanyNewsRoutine(name string, m domain.Market, src port.CompanyNewsSource) port.Routine {
+	return routine{name, func(ctx context.Context) error { _, err := s.SyncCompanyNews(ctx, m, src); return err }}
+}
+
+// NewsRoutine syncs market-wide news.
+func (s *Service) NewsRoutine(name string, src port.NewsSource) port.Routine {
+	return routine{name, func(ctx context.Context) error { _, err := s.SyncNews(ctx, src); return err }}
+}
+
+// MacroRoutine syncs the series a macro source serves.
+func (s *Service) MacroRoutine(name string, src port.MacroSource) port.Routine {
+	return routine{name, func(ctx context.Context) error { _, err := s.SyncMacro(ctx, src); return err }}
+}
+
+// BondsRoutine syncs government bond quotes.
+func (s *Service) BondsRoutine(name string, src port.BondSource) port.Routine {
+	return routine{name, func(ctx context.Context) error { _, err := s.SyncBonds(ctx, src); return err }}
+}

@@ -97,6 +97,45 @@ type IndicatorWriter interface {
 	UpsertIndicators(ctx context.Context, sets []domain.IndicatorSet) error
 }
 
+// QuoteWriter replaces the latest quote per asset.
+type QuoteWriter interface {
+	UpsertQuotes(ctx context.Context, quotes []domain.Quote) error
+}
+
+// QuoteReader reads the latest quote.
+type QuoteReader interface {
+	// LatestQuote returns domain.ErrNotFound when no quote is stored.
+	LatestQuote(ctx context.Context, asset domain.AssetKey) (domain.Quote, error)
+}
+
+// NewsWriter stores news items, deduplicated by URL, and links each to the
+// tracked assets it mentions.
+type NewsWriter interface {
+	UpsertNews(ctx context.Context, items []domain.NewsItem) error
+}
+
+// NewsReader reads recent news.
+type NewsReader interface {
+	// NewsFor returns an asset's news published at or after since, newest
+	// first.
+	NewsFor(ctx context.Context, asset domain.AssetKey, since time.Time, limit int) ([]domain.NewsItem, error)
+}
+
+// MacroRepository stores macro series observations by (series, date).
+type MacroRepository interface {
+	UpsertMacro(ctx context.Context, points []domain.MacroPoint) error
+	MacroSince(ctx context.Context, series string, since time.Time) ([]domain.MacroPoint, error)
+	// LatestMacroDate returns ok false when the series is empty.
+	LatestMacroDate(ctx context.Context, series string) (date time.Time, ok bool, err error)
+}
+
+// BondRepository stores government bond quotes by (asset, date).
+type BondRepository interface {
+	UpsertBondQuotes(ctx context.Context, quotes []domain.BondQuote) error
+	// LatestBondDate returns ok false when no bond quote is stored.
+	LatestBondDate(ctx context.Context) (date time.Time, ok bool, err error)
+}
+
 // --- Market data providers ---------------------------------------------------
 //
 // One adapter per provider (B3 COTAHIST, CVM, SEC EDGAR, Finnhub, brapi, ...)
@@ -152,16 +191,35 @@ type CorporateActionSource interface {
 	CorporateActions(ctx context.Context, asset domain.AssetKey, since time.Time) ([]domain.CorporateAction, error)
 }
 
-// NewsSource fetches news and filings published after a point in time.
+// NewsSource fetches market-wide news and filings published at or after
+// since, each tagged with the assets it concerns (CVM material facts).
 type NewsSource interface {
 	Name() string
 	News(ctx context.Context, since time.Time) ([]domain.NewsItem, error)
 }
 
-// MacroSource fetches macro series observations (selic, ipca, fed_funds, ...).
+// CompanyNewsSource fetches one asset's news published at or after since
+// (Finnhub company news). It returns domain.ErrNotFound for assets it does
+// not cover.
+type CompanyNewsSource interface {
+	Name() string
+	CompanyNews(ctx context.Context, asset domain.AssetKey, since time.Time) ([]domain.NewsItem, error)
+}
+
+// MacroSource fetches observations of the domain.Series* codes it serves
+// (BCB for Brazil, FRED for the US).
 type MacroSource interface {
 	Name() string
+	// Serves lists the series codes this source provides.
+	Serves() []string
 	Series(ctx context.Context, series string, since time.Time) ([]domain.MacroPoint, error)
+}
+
+// BondSource fetches government bond quotes from since onwards, with the
+// bond's identity (Asset, Name, Maturity) on every quote.
+type BondSource interface {
+	Name() string
+	BondQuotes(ctx context.Context, since time.Time) ([]domain.BondQuote, error)
 }
 
 // --- AI ---------------------------------------------------------------------

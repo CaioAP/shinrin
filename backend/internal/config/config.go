@@ -33,6 +33,12 @@ type Config struct {
 	// contact email, e.g. "Shinrin you@example.com" (SHINRIN_SEC_USER_AGENT).
 	// Empty disables US fundamentals.
 	SECUserAgent string
+	// FinnhubToken enables US quotes and company news (SHINRIN_FINNHUB_TOKEN).
+	FinnhubToken string
+	// BrapiToken enables B3 intraday quotes (SHINRIN_BRAPI_TOKEN).
+	BrapiToken string
+	// FREDAPIKey enables US macro series (SHINRIN_FRED_API_KEY).
+	FREDAPIKey string
 }
 
 // Load reads settings through getenv (os.Getenv in production, a map lookup in
@@ -47,6 +53,9 @@ func Load(getenv func(string) string) (Config, error) {
 		HistoryStart:    time.Date(2010, 1, 1, 0, 0, 0, 0, time.UTC),
 		TiingoToken:     getenv("SHINRIN_TIINGO_TOKEN"),
 		SECUserAgent:    getenv("SHINRIN_SEC_USER_AGENT"),
+		FinnhubToken:    getenv("SHINRIN_FINNHUB_TOKEN"),
+		BrapiToken:      getenv("SHINRIN_BRAPI_TOKEN"),
+		FREDAPIKey:      getenv("SHINRIN_FRED_API_KEY"),
 	}
 
 	if v := getenv("SHINRIN_SHUTDOWN_TIMEOUT"); v != "" {

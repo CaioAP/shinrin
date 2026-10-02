@@ -26,16 +26,18 @@ func d(y int, m time.Month, day int) time.Time { return time.Date(y, m, day, 0, 
 type fixture struct {
 	assets *memory.AssetRepository
 	data   *memory.MarketDataStore
+	feeds  *memory.FeedStore
 	svc    *ingest.Service
 }
 
 func newFixture(t *testing.T, assets ...domain.Asset) fixture {
 	t.Helper()
-	f := fixture{assets: memory.NewAssetRepository(), data: memory.NewMarketDataStore()}
+	f := fixture{assets: memory.NewAssetRepository(), data: memory.NewMarketDataStore(), feeds: memory.NewFeedStore()}
 	if err := f.assets.UpsertAssets(context.Background(), assets); err != nil {
 		t.Fatal(err)
 	}
-	f.svc = ingest.New(ingest.Stores{Assets: f.assets, Prices: f.data, Fundamentals: f.data, Actions: f.data},
+	f.svc = ingest.New(ingest.Stores{Assets: f.assets, Prices: f.data, Fundamentals: f.data, Actions: f.data,
+		Quotes: f.feeds, News: f.feeds, Macro: f.feeds, Bonds: f.feeds},
 		ingest.Options{HistoryStart: d(2025, 1, 1), Now: func() time.Time { return today }})
 	return f
 }
@@ -159,7 +161,8 @@ func TestSyncMarketPricesUsesEarliestGapAndDropsUntracked(t *testing.T) {
 
 func TestSyncMarketPricesBackfillsAYearAtATime(t *testing.T) {
 	f := newFixture(t, stock(petr))
-	f.svc = ingest.New(ingest.Stores{Assets: f.assets, Prices: f.data, Fundamentals: f.data, Actions: f.data},
+	f.svc = ingest.New(ingest.Stores{Assets: f.assets, Prices: f.data, Fundamentals: f.data, Actions: f.data,
+		Quotes: f.feeds, News: f.feeds, Macro: f.feeds, Bonds: f.feeds},
 		ingest.Options{HistoryStart: d(2023, 6, 1), Now: func() time.Time { return today }})
 	src := &fakeMarket{bars: []domain.PriceBar{
 		{Asset: petr, Date: d(2023, 6, 1), Close: 1},

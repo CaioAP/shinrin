@@ -8,6 +8,7 @@ require (
 	github.com/riverqueue/river v0.48.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.48.0
 	github.com/robfig/cron/v3 v3.0.1
+	golang.org/x/text v0.42.0
 	golang.org/x/time v0.16.0
 )
 
@@ -26,5 +27,4 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
 )
