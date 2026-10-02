@@ -12,19 +12,21 @@ Shinrin collects market data, company filings and news for **Brazilian (B3)** an
 | `web/` | Nuxt app (dashboard, asset pages, onboarding) |
 | `docs/design.md` | Architecture, data model, routines, scoring and AI design |
 | `docs/data-sources.md` | Free data sources for B3 and US, with limits and terms |
+| `docs/conventions.md` | Code conventions: hexagonal Go backend, SOLID, patterns, Nuxt conventions |
 
 ## Running locally
 
 ```bash
 # backend
 cd backend
-go test ./...
+go vet ./... && go test ./...
 go run ./cmd/shinrin api        # http://localhost:8080/healthz
 
 # web
 cd web
-npm install
-npm run dev                     # http://localhost:3000
+npm ci
+npm run lint && npm run typecheck
+npm run dev                     # http://localhost:3000 (calls the API via NUXT_API_BASE)
 ```
 
 Requires Go 1.24+ and Node 22+.
