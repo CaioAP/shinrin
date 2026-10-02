@@ -8,7 +8,12 @@ Researched 2026-10-01. Limits change often, so recheck each provider's pricing p
 |---|---|---|---|
 | Daily price history (for technicals) | Tiingo (EOD) or Financial Modeling Prep | **B3 COTAHIST files** (official, every ticker since 1986) | Free |
 | Near-live quotes | Finnhub | brapi.dev (free tier, 30 min delay) | Free |
-| Fundamentals (income, balance sheet, cash flow) | **SEC EDGAR XBRL API** (official) | **CVM Dados Abertos** (DFP annual + ITR quarterly) | Free |
+| Fundamentals (income, balance sheet, cash flow) | **SEC EDGAR XBRL API** (official) | **B3 listed-company and index services (used for the Ibovespa list and B3 dividends)**
+- The JSON services behind B3's website: `indexProxy/indexCall/GetPortfolioDay` (an index's theoretical portfolio) and `listedCompaniesProxy/CompanyCall/GetListedSupplementCompany` (a company's cash dividends, JCP, splits, reverse splits and bonus shares, with the last "with" date).
+- Free, no key, parameters are base64-encoded JSON in the URL. Undocumented, so treat the shape as unstable.
+- Host: `sistemaswebb3-listados.b3.com.br`
+
+**CVM Dados Abertos** (DFP annual + ITR quarterly) | Free |
 | Company news | Finnhub company news | CVM IPE filings (fatos relevantes) + news RSS feeds | Free |
 | Macro context | FRED (Fed rates, CPI) | **BCB SGS / Focus** (Selic, IPCA, PTAX, market forecasts) | Free |
 
@@ -23,6 +28,11 @@ The pattern: use official government and exchange sources for the heavy data (hi
 - Free, no key, no rate limit. Ideal for a nightly job.
 - Caveat: prices are not adjusted for dividends or splits. Shinrin must adjust them itself using corporate action data (CVM or brapi dividends) before computing returns or long moving averages.
 - Links: [Cotações históricas](https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/), [layout PDF](https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf)
+
+**B3 listed-company and index services (used for the Ibovespa list and B3 dividends)**
+- The JSON services behind B3's website: `indexProxy/indexCall/GetPortfolioDay` (an index's theoretical portfolio) and `listedCompaniesProxy/CompanyCall/GetListedSupplementCompany` (a company's cash dividends, JCP, splits, reverse splits and bonus shares, with the last "with" date).
+- Free, no key, parameters are base64-encoded JSON in the URL. Undocumented, so treat the shape as unstable.
+- Host: `sistemaswebb3-listados.b3.com.br`
 
 **CVM Dados Abertos**
 - Official filings of every listed Brazilian company: DFP (annual statements), ITR (quarterly), FCA/FRE (registration data, share counts), IPE (material facts and announcements).
@@ -58,6 +68,9 @@ The pattern: use official government and exchange sources for the heavy data (hi
 
 **Tiingo**
 - Free tier with hourly/daily request caps and a monthly unique-symbol cap (exact numbers to confirm on their docs). Long, clean, split-adjusted US EOD history.
+
+**S&P 500 constituents**
+- S&P Dow Jones Indices does not publish the list for free. Shinrin reads the community-maintained CSV at [datasets/s-and-p-500-companies](https://github.com/datasets/s-and-p-500-companies) (tracks Wikipedia, includes CIK and GICS sector).
 
 **Alpha Vantage**
 - Free tier is now 25 requests/day. Too small to rely on; skip.

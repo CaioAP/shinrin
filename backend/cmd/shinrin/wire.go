@@ -1,43 +1,143 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/CaioAP/shinrin/backend/internal/adapter/in/httpapi"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/b3api"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/b3cotahist"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/cvm"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/memory"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/postgres"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/sec"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/sp500"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/tiingo"
+	"github.com/CaioAP/shinrin/backend/internal/app/analytics"
 	"github.com/CaioAP/shinrin/backend/internal/app/catalog"
+	"github.com/CaioAP/shinrin/backend/internal/app/ingest"
 	"github.com/CaioAP/shinrin/backend/internal/app/system"
 	"github.com/CaioAP/shinrin/backend/internal/config"
+	"github.com/CaioAP/shinrin/backend/internal/httpx"
 	"github.com/CaioAP/shinrin/backend/internal/port"
 )
 
-// container holds the wired application. Both roles build from it, so the api
-// and the worker always share the same adapters.
+// errNoDatabase is returned by roles that need Postgres when none is set.
+var errNoDatabase = errors.New("SHINRIN_DATABASE_URL is required for this command")
+
+// stores groups the repository ports. Postgres implements all of them; the
+// memory adapters stand in when no database is configured.
+type stores struct {
+	assets       port.AssetRepository
+	prices       port.PriceRepository
+	fundamentals port.FundamentalRepository
+	actions      port.CorporateActionRepository
+	indicators   interface {
+		port.IndicatorReader
+		port.IndicatorWriter
+	}
+	health []port.HealthChecker
+}
+
+// container holds the wired application. Every role builds from it, so the
+// api, the worker and one-off runs always share the same adapters.
 type container struct {
-	assets  port.AssetRepository
-	system  port.SystemService
-	catalog port.CatalogService
+	cfg       config.Config
+	log       *slog.Logger
+	pool      *pgxpool.Pool // nil without a database
+	st        stores
+	system    port.SystemService
+	catalog   port.CatalogService
+	ingest    *ingest.Service
+	analytics *analytics.Service
 }
 
 // build is the manual dependency injection for the whole app. Swap an adapter
 // here (for example memory -> postgres) and nothing else changes.
-func build(cfg config.Config) *container {
-	// Driven adapters.
-	assets := memory.NewAssetRepository() // replaced by a Postgres adapter in the data pipeline phase
+func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container, func(), error) {
+	c := &container{cfg: cfg, log: log}
+	cleanup := func() {}
 
-	// Application services.
-	return &container{
-		assets:  assets,
-		system:  system.New(cfg.Version),
-		catalog: catalog.New(assets),
+	if cfg.DatabaseURL != "" {
+		pool, err := postgres.Open(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return nil, nil, err
+		}
+		cleanup = pool.Close
+		store := postgres.New(pool)
+		c.pool = pool
+		c.st = stores{assets: store, prices: store, fundamentals: store, actions: store, indicators: store, health: []port.HealthChecker{store}}
+	} else {
+		data := memory.NewMarketDataStore()
+		c.st = stores{assets: memory.NewAssetRepository(), prices: data, fundamentals: data, actions: data, indicators: data}
 	}
+
+	c.system = system.New(cfg.Version, c.st.health...)
+	c.catalog = catalog.New(c.st.assets)
+	c.ingest = ingest.New(ingest.Stores{
+		Assets:       c.st.assets,
+		Prices:       c.st.prices,
+		Fundamentals: c.st.fundamentals,
+		Actions:      c.st.actions,
+	}, ingest.Options{HistoryStart: cfg.HistoryStart, Logger: log})
+	c.analytics = analytics.New(analytics.Stores{
+		Assets:       c.st.assets,
+		Prices:       c.st.prices,
+		Fundamentals: c.st.fundamentals,
+		Actions:      c.st.actions,
+		Indicators:   c.st.indicators,
+	}, nil, log)
+	return c, cleanup, nil
 }
 
-func (c *container) httpHandler(log *slog.Logger) http.Handler {
+func (c *container) httpHandler() http.Handler {
 	return httpapi.NewRouter(httpapi.Deps{
 		System:  c.system,
 		Catalog: c.catalog,
-		Logger:  log,
+		Logger:  c.log,
 	})
+}
+
+// Outbound clients, one per provider, sized under each free quota. Rates are
+// documented in docs/data-sources.md.
+const userAgent = "Shinrin/0.1 (+https://github.com/CaioAP/shinrin)"
+
+func (c *container) b3Files() *b3cotahist.Source {
+	return b3cotahist.New(httpx.NewClient(httpx.Options{UserAgent: userAgent, RequestsPerSecond: 1, Burst: 1, Retries: 3, Timeout: 10 * time.Minute}), "", nil)
+}
+
+func (c *container) b3API() *b3api.Client {
+	return b3api.New(httpx.NewClient(httpx.Options{UserAgent: userAgent, RequestsPerSecond: 2, Burst: 1, Retries: 3, Timeout: time.Minute}), "")
+}
+
+func (c *container) cvm() *cvm.Client {
+	return cvm.New(httpx.NewClient(httpx.Options{UserAgent: userAgent, RequestsPerSecond: 1, Burst: 1, Retries: 3, Timeout: 10 * time.Minute}), "", nil)
+}
+
+func (c *container) sp500() *sp500.Source {
+	return sp500.New(httpx.NewClient(httpx.Options{UserAgent: userAgent, Retries: 3, Timeout: time.Minute}), "")
+}
+
+// sec returns nil when no contact User-Agent is configured: EDGAR blocks
+// anonymous clients.
+func (c *container) sec() *sec.Client {
+	if c.cfg.SECUserAgent == "" {
+		return nil
+	}
+	return sec.New(httpx.NewClient(httpx.Options{UserAgent: c.cfg.SECUserAgent, RequestsPerSecond: 8, Burst: 1, Retries: 3, Timeout: 2 * time.Minute}), "", "")
+}
+
+// tiingo returns nil without a token. The free tier allows about 50 requests
+// an hour, so the first backfill of the S&P 500 takes a working day; later
+// runs need one request per ticker.
+func (c *container) tiingo() *tiingo.Client {
+	if c.cfg.TiingoToken == "" {
+		return nil
+	}
+	return tiingo.New(httpx.NewClient(httpx.Options{RequestsPerSecond: 45.0 / 3600, Burst: 1, Retries: 2, RetryBase: time.Minute, Timeout: 10 * time.Minute}), "", c.cfg.TiingoToken)
 }

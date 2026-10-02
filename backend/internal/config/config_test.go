@@ -41,3 +41,21 @@ func TestLoadRejectsBadDuration(t *testing.T) {
 		t.Fatal("want error for bad duration")
 	}
 }
+
+func TestLoadPipelineSettings(t *testing.T) {
+	c, err := config.Load(env(map[string]string{
+		"SHINRIN_DATABASE_URL":   "postgres://localhost/shinrin",
+		"SHINRIN_HISTORY_START":  "2015-01-01",
+		"SHINRIN_TIINGO_TOKEN":   "tok",
+		"SHINRIN_SEC_USER_AGENT": "Shinrin me@example.com",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.DatabaseURL == "" || c.HistoryStart.Year() != 2015 || c.TiingoToken != "tok" || c.SECUserAgent == "" {
+		t.Fatalf("pipeline settings not applied: %+v", c)
+	}
+	if _, err := config.Load(env(map[string]string{"SHINRIN_HISTORY_START": "2015"})); err == nil {
+		t.Fatal("want error for bad date")
+	}
+}

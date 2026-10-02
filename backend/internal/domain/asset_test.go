@@ -44,3 +44,15 @@ func TestParseMarket(t *testing.T) {
 		t.Fatalf("B3 currency = %q", got)
 	}
 }
+
+func TestIsB3Unit(t *testing.T) {
+	for k, want := range map[domain.AssetKey]bool{
+		{Market: domain.MarketB3, Symbol: "TAEE11"}: true,
+		{Market: domain.MarketB3, Symbol: "PETR4"}:  false,
+		{Market: domain.MarketUS, Symbol: "XX11"}:   false,
+	} {
+		if got := k.IsB3Unit(); got != want {
+			t.Errorf("%s.IsB3Unit() = %v", k, got)
+		}
+	}
+}

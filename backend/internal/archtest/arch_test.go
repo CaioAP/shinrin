@@ -25,6 +25,7 @@ var allowed = map[string][]string{
 	"app":         {"domain", "port"},
 	"adapter/in":  {"domain", "port"},
 	"adapter/out": {"domain", "port"},
+	"httpx":       {}, // outbound HTTP decorators, wired in cmd
 }
 
 func layerOf(rel string) string {

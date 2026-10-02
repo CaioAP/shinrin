@@ -28,6 +28,75 @@ type AssetRepository interface {
 	AssetWriter
 }
 
+// PriceReader reads stored daily bars.
+type PriceReader interface {
+	// PricesBetween returns bars with from <= date <= to, oldest first.
+	PricesBetween(ctx context.Context, asset domain.AssetKey, from, to time.Time) ([]domain.PriceBar, error)
+	// LatestPriceDate returns the date of the newest stored bar; ok is false
+	// when the asset has no prices yet.
+	LatestPriceDate(ctx context.Context, asset domain.AssetKey) (date time.Time, ok bool, err error)
+}
+
+// PriceWriter inserts or replaces daily bars by (asset, date).
+type PriceWriter interface {
+	UpsertPrices(ctx context.Context, bars []domain.PriceBar) error
+}
+
+// PriceRepository is the full price store.
+type PriceRepository interface {
+	PriceReader
+	PriceWriter
+}
+
+// FundamentalReader reads stored fundamentals.
+type FundamentalReader interface {
+	FundamentalsSince(ctx context.Context, asset domain.AssetKey, since time.Time) ([]domain.Fundamental, error)
+	// LatestPeriodEnd returns the newest stored period end; ok is false when
+	// the asset has no fundamentals yet.
+	LatestPeriodEnd(ctx context.Context, asset domain.AssetKey) (end time.Time, ok bool, err error)
+}
+
+// FundamentalWriter inserts or replaces fundamentals by (asset, period end,
+// period type, metric).
+type FundamentalWriter interface {
+	UpsertFundamentals(ctx context.Context, rows []domain.Fundamental) error
+}
+
+// FundamentalRepository is the full fundamentals store.
+type FundamentalRepository interface {
+	FundamentalReader
+	FundamentalWriter
+}
+
+// CorporateActionReader reads stored corporate actions.
+type CorporateActionReader interface {
+	CorporateActionsSince(ctx context.Context, asset domain.AssetKey, since time.Time) ([]domain.CorporateAction, error)
+}
+
+// CorporateActionWriter inserts or replaces corporate actions by (asset,
+// ex-date, type).
+type CorporateActionWriter interface {
+	UpsertCorporateActions(ctx context.Context, actions []domain.CorporateAction) error
+}
+
+// CorporateActionRepository is the full corporate action store.
+type CorporateActionRepository interface {
+	CorporateActionReader
+	CorporateActionWriter
+}
+
+// IndicatorReader reads computed indicators.
+type IndicatorReader interface {
+	// LatestIndicators returns domain.ErrNotFound when nothing was computed.
+	LatestIndicators(ctx context.Context, asset domain.AssetKey) (domain.IndicatorSet, error)
+}
+
+// IndicatorWriter stores computed indicators, replacing any set with the same
+// asset and date.
+type IndicatorWriter interface {
+	UpsertIndicators(ctx context.Context, sets []domain.IndicatorSet) error
+}
+
 // --- Market data providers ---------------------------------------------------
 //
 // One adapter per provider (B3 COTAHIST, CVM, SEC EDGAR, Finnhub, brapi, ...)
@@ -40,19 +109,44 @@ type PriceSource interface {
 	DailyPrices(ctx context.Context, asset domain.AssetKey, from, to time.Time) ([]domain.PriceBar, error)
 }
 
+// MarketPriceSource fetches every bar a whole market published in a date
+// range. Exchanges that publish bulk end-of-day files (B3 COTAHIST) implement
+// it: one download covers every ticker, so fetching per asset would waste it.
+type MarketPriceSource interface {
+	Name() string
+	Market() domain.Market
+	// MarketPrices returns bars with from <= date <= to for every listed
+	// ticker. Days without trading are simply absent.
+	MarketPrices(ctx context.Context, from, to time.Time) ([]domain.PriceBar, error)
+}
+
+// UniverseSource lists an index's current members, which become the assets
+// Shinrin tracks by default.
+type UniverseSource interface {
+	Name() string
+	// Constituents returns the index members with Key, Class and Name set and
+	// IndexMember true. Optional identifiers (ISIN, CIK, CNPJ) are filled when
+	// the source knows them.
+	Constituents(ctx context.Context, index domain.Index) ([]domain.Asset, error)
+}
+
 // QuoteSource fetches the latest (possibly delayed) quotes.
 type QuoteSource interface {
 	Name() string
 	Quotes(ctx context.Context, assets []domain.AssetKey) ([]domain.Quote, error)
 }
 
-// FundamentalsSource fetches reported financial metrics.
+// FundamentalsSource fetches reported financial metrics, mapped to the
+// domain.Metric* names. It returns domain.ErrNotFound for an asset it does not
+// cover (an FII, a bank whose accounts it cannot map, an unknown ticker).
 type FundamentalsSource interface {
 	Name() string
 	Fundamentals(ctx context.Context, asset domain.AssetKey, since time.Time) ([]domain.Fundamental, error)
 }
 
-// CorporateActionSource fetches dividends, JCP, splits and bonuses.
+// CorporateActionSource fetches dividends, JCP, splits and bonuses. since is a
+// lower bound the source may ignore (some return the full history in one
+// call); storage is idempotent so extra rows are harmless.
 type CorporateActionSource interface {
 	Name() string
 	CorporateActions(ctx context.Context, asset domain.AssetKey, since time.Time) ([]domain.CorporateAction, error)
@@ -103,11 +197,4 @@ type LLMProvider interface {
 type HealthChecker interface {
 	Name() string
 	Check(ctx context.Context) error
-}
-
-// Routine is a unit of scheduled work (ingest prices, score assets, ...). The
-// scheduler adapter (River, in the data pipeline phase) decides when it runs.
-type Routine interface {
-	Name() string
-	Run(ctx context.Context) error
 }

@@ -74,16 +74,45 @@ type AssetKey struct {
 
 func (k AssetKey) String() string { return string(k.Market) + ":" + string(k.Symbol) }
 
+// IsB3Unit reports whether a B3 stock ticker is a unit (TAEE11, KLBN11): a
+// bundle of ordinary and preferred shares traded as one. A unit's price is
+// not a per-share price, so per-share ratios (P/E, market cap) built from the
+// company's share count would be off by the bundle size. Callers must also
+// know the asset is a stock: FIIs end in 11 too.
+func (k AssetKey) IsB3Unit() bool {
+	return k.Market == MarketB3 && strings.HasSuffix(string(k.Symbol), "11")
+}
+
 // Asset is anything Shinrin tracks and scores.
 type Asset struct {
-	Key         AssetKey
-	Class       AssetClass
-	Name        string
-	Sector      string
-	ISIN        string
+	Key    AssetKey
+	Class  AssetClass
+	Name   string
+	Sector string
+	ISIN   string
+	// CIK is the SEC registrant id (US). CNPJ is the issuer's Brazilian tax id,
+	// which is how CVM filings are matched to a ticker. Both are optional.
+	CIK         string
+	CNPJ        string
 	IndexMember bool
 	Active      bool
 }
 
 // Currency is the asset's quote currency.
 func (a Asset) Currency() string { return a.Key.Market.Currency() }
+
+// Index is a market index whose members form Shinrin's default universe.
+type Index string
+
+const (
+	IndexIbovespa Index = "IBOV"
+	IndexSP500    Index = "SPX"
+)
+
+// Market returns the market an index's members trade in.
+func (i Index) Market() Market {
+	if i == IndexIbovespa {
+		return MarketB3
+	}
+	return MarketUS
+}
