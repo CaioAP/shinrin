@@ -34,6 +34,11 @@ These are the choices behind the design, kept for the blog post.
 | 9 | Phased asset classes | Everything in v1 | v1 ships sooner. A generic asset model avoids redesign later. |
 | 10 | Postgres + River job queue | Redis queues; cron + scripts; Temporal | One datastore for data and jobs, with retries and run history out of the box. |
 | 11 | Two-layer analysis: deterministic scores, then LLM | LLM does everything | Numbers stay reproducible and testable. The LLM can't invent figures it wasn't given. |
+| 12 | B3 dividends, JCP and splits from B3's own listed-company JSON service | brapi free tier (limited dividends); parsing CVM filings | Free, from the exchange, whole history in one call per company. It is undocumented, so the adapter parses strictly and fails loudly if the shape changes. |
+| 13 | Adjust prices in-house from raw closes plus stored corporate actions | Store each vendor's adjusted close | A vendor's adjusted history is rewritten on every new dividend, so a stored copy goes stale. One method for both markets. |
+| 14 | S&P 500 members from the community `datasets/s-and-p-500-companies` CSV | Scrape Wikipedia; licensed S&P data | Free, includes CIK and GICS sector. Not official, so membership is refreshed weekly and an empty list is refused. |
+| 15 | Hand-written SQL on pgx with array (`unnest`) upserts; no sqlc yet | sqlc | About fifteen queries so far; one round trip writes thousands of rows. Revisit sqlc when the API read side grows. |
+| 16 | One River queue per provider, one job at a time each | One shared queue | Rate limits are per provider, so a slow Tiingo backfill never blocks B3 or CVM. |
 
 ## 3. Scope by phase
 
@@ -150,6 +155,8 @@ All times are cron jobs in River, stored in Postgres, retried with backoff, logg
 | `ai_watchlist_reports` | User-scheduled (e.g. Monday 08:00) | User's LLM key | Respects the user's monthly cap |
 
 Respecting rate limits: each source package has a token-bucket limiter set below the provider's free quota, and River's per-queue concurrency keeps one queue per provider.
+
+Implemented in the data pipeline phase: `ibov_members`, `sp500_members` (the `index_membership` job), `b3_prices_eod`, `b3_corporate_actions`, `cvm_fundamentals`, `us_prices_eod` (Tiingo, with dividends and splits), `sec_fundamentals` and `indicators` (technicals and valuation ratios, ahead of `scoring`). Still to build: `quotes_intraday`, `news_fetch`, `news_sentiment`, `macro`, `bonds`, FII monthly reports. Any routine can be run once by hand with `shinrin run <name>`.
 
 ## 8. Analysis engine (no LLM)
 
@@ -274,5 +281,6 @@ In Brazil, publishing securities recommendations is regulated (CVM Resolução 2
 
 - Repository: name and create it on GitHub (suggested `shinrin`, monorepo with `/backend` and `/web`).
 - Hosting choice (VPS vs managed) and domain.
-- Confirm exact Tiingo free limits when wiring US EOD.
-- Source for B3 stock dividends on the free plan (brapi limited free data vs parsing CVM), decided during the data pipeline thread.
+- Confirm exact Tiingo free limits. The adapter assumes about 50 requests an hour; a 500 distinct tickers per month cap would sit just under the S&P 500's 503 share classes.
+- ~~Source for B3 stock dividends on the free plan~~: decided, B3's listed-company service (decision 12).
+- Banks and insurers: CVM files them under a different chart of accounts, so their fundamentals are skipped until a financial-sector mapping exists.

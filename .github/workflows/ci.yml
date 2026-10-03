@@ -14,12 +14,30 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      # Postgres and River adapter tests run against this; they skip when
+      # SHINRIN_TEST_DATABASE_URL is unset (local runs without a database).
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: shinrin
+          POSTGRES_PASSWORD: shinrin
+          POSTGRES_DB: shinrin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shinrin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SHINRIN_TEST_DATABASE_URL: postgres://shinrin:shinrin@localhost:5432/shinrin_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
-          cache: false # no third-party modules yet; enable with go.sum
+          cache-dependency-path: backend/go.sum
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - run: go vet ./...

@@ -1,0 +1,15 @@
+# Local development database. Production deployment is designed in the web
+# app phase (docs/design.md, section 12).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: shinrin
+      POSTGRES_PASSWORD: shinrin
+      POSTGRES_DB: shinrin
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

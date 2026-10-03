@@ -19,13 +19,16 @@ The four principles:
 
 ```
 backend/
-  cmd/shinrin/          composition root: config, wiring (wire.go), `api` and `worker` roles
+  cmd/shinrin/          composition root: config, wiring (wire.go), routine registry (worker.go),
+                        and the `api`, `worker`, `migrate` and `run` commands
   internal/
     domain/             entities, value objects, domain errors. Standard library only.
     port/               interfaces: driving.go (use cases), driven.go (what the app needs)
     app/<area>/         application services, one package per use-case area
-    adapter/in/<name>/  driving adapters: httpapi (REST), later the River job handlers
-    adapter/out/<name>/ driven adapters: memory, later postgres, b3cotahist, finnhub, anthropic, ...
+    adapter/in/<name>/  driving adapters: httpapi (REST), jobs (River scheduler)
+    adapter/out/<name>/ driven adapters: memory, postgres, b3cotahist, b3api, cvm, sec, tiingo,
+                        sp500; later finnhub, brapi, bcb, fred, tesouro, anthropic, ...
+    httpx/              outbound HTTP decorators (user agent, rate limit, retry) for providers
     config/             env config, read once in cmd/
     archtest/           tests that enforce the dependency rule below
 ```
@@ -42,6 +45,7 @@ adapter):
 | `port` | `domain` |
 | `app/*` | `domain`, `port` |
 | `adapter/in/*`, `adapter/out/*` | `domain`, `port` |
+| `httpx` | nothing (it decorates `net/http`; `cmd` hands the result to adapters) |
 | `config` | nothing |
 | `cmd/shinrin` | everything (it is the only place that does) |
 
@@ -56,11 +60,18 @@ Consequences:
 ### Ports
 
 - **Driving ports** (`port/driving.go`) are the use cases: `SystemService`,
-  `CatalogService`, later `IngestService`, `ScoringService`, `ReportService`.
+  `CatalogService`, and `Routine` (scheduled work: the `ingest` and
+  `analytics` services expose their syncs as routines, which the `jobs`
+  adapter runs on a cron). Later `ScoringService`, `ReportService`.
 - **Driven ports** (`port/driven.go`) are the outside world: repositories
-  (`AssetReader`, `AssetWriter`), market data (`PriceSource`, `QuoteSource`,
-  `FundamentalsSource`, `CorporateActionSource`, `NewsSource`, `MacroSource`),
-  AI (`LLMProvider`), infrastructure (`HealthChecker`, `Routine`).
+  (`AssetReader`/`AssetWriter`, `PriceReader`/`PriceWriter`,
+  `FundamentalReader`/`FundamentalWriter`, `CorporateActionReader`/`Writer`,
+  `IndicatorReader`/`Writer`), market data (`UniverseSource`,
+  `MarketPriceSource`, `PriceSource`, `QuoteSource`, `FundamentalsSource`,
+  `CorporateActionSource`, `NewsSource`, `MacroSource`), AI (`LLMProvider`),
+  infrastructure (`HealthChecker`).
+- A source port returns `domain.ErrNotFound` for an asset it does not cover;
+  ingestion skips those quietly and counts every other error as a failure.
 - Ports mention only domain types and the standard library.
 - Keep interfaces small. Split read and write sides (`AssetReader` /
   `AssetWriter`) and let consumers depend on the side they use.
@@ -86,9 +97,16 @@ Consequences:
   (`middleware.go`).
 - **Driven (`adapter/out`)**: one package per technology or provider. A data
   provider package implements every source port it can serve and nothing else
-  (for example `b3cotahist` implements `PriceSource`; `finnhub` implements
-  `QuoteSource` and `NewsSource`). Rate limits, retries and parsing belong
-  inside the adapter.
+  (for example `b3cotahist` implements `MarketPriceSource`; `tiingo`
+  implements `PriceSource` and `CorporateActionSource`). Parsing and any
+  provider-specific caching belong inside the adapter. Generic politeness
+  (rate limit, retry, User-Agent) comes from the `*http.Client` that
+  `cmd/shinrin/wire.go` builds with `httpx` and injects, so adapter tests use
+  `httptest` servers and real fixtures in the provider's own format.
+- Data adapters are tested against fixtures in the provider's real format
+  (zip, fixed-width text, CSV, JSON) served by `httptest`. Postgres and River
+  tests run when `SHINRIN_TEST_DATABASE_URL` is set (CI sets it) and skip
+  otherwise.
 - Every stored value keeps its `Source`.
 
 ### Wiring (dependency injection)
@@ -105,11 +123,11 @@ Consequences:
 | Pattern | Where | Why |
 |---|---|---|
 | Adapter | every `adapter/out` package | wraps a provider's API behind a port |
-| Strategy | `PriceSource`, `LLMProvider`, later scoring factors | pick an implementation per market, provider or asset class at wiring time |
-| Decorator | HTTP middleware; later caching, rate-limited or retrying sources | add behaviour without touching the wrapped type |
+| Strategy | source ports passed per routine (`ingest.PricesRoutine(name, market, source, ...)`), `LLMProvider`, later scoring factors | the same ingestion code serves B3 and US from different providers, chosen at wiring time |
+| Decorator | HTTP middleware; `httpx` round trippers (user agent, rate limit, retry) | add behaviour without touching the wrapped type |
 | Composite | `system.Service` aggregates `HealthChecker`s | one health answer from many dependencies |
 | Repository | `AssetReader` / `AssetWriter` | storage behind an interface |
-| Registry | `routines()` in `cmd/shinrin/worker.go` | the worker discovers routines from one list |
+| Registry | `routines()` in `cmd/shinrin/worker.go`; one River worker dispatching by routine name | the worker discovers routines from one list |
 
 Prefer a decorator over a flag (`NewCachedPriceSource(inner)`, not
 `PriceSource{cache: true}`), and a new strategy over a `switch` on provider

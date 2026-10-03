@@ -37,3 +37,12 @@ type CatalogService interface {
 	ListAssets(ctx context.Context, f AssetFilter) ([]domain.Asset, error)
 	GetAsset(ctx context.Context, key domain.AssetKey) (domain.Asset, error)
 }
+
+// Routine is a unit of scheduled work (sync prices, compute indicators, ...).
+// Application services expose their routines; the scheduler adapter (River)
+// decides when each one runs. Run must be idempotent: a retried or repeated
+// run must not duplicate data.
+type Routine interface {
+	Name() string
+	Run(ctx context.Context) error
+}

@@ -2,7 +2,9 @@ package domain
 
 import "time"
 
-// PriceBar is one day of trading for an asset.
+// PriceBar is one day of trading for an asset. Open to Close are raw traded
+// prices. AdjClose is the source's own adjusted close, or zero when it
+// publishes raw prices only; analysis recomputes it with AdjustCloses.
 type PriceBar struct {
 	Asset    AssetKey
 	Date     time.Time
@@ -35,6 +37,10 @@ const (
 )
 
 // CorporateAction is a dividend, JCP, split or bonus event.
+//
+// Value is the cash amount per share for dividends and JCP, and the share
+// ratio (shares after / shares before) for splits and bonuses: 2 for a 2-for-1
+// split, 1.1 for a 10% bonus, 0.1 for a 10-to-1 reverse split.
 type CorporateAction struct {
 	Asset  AssetKey
 	ExDate time.Time
@@ -42,6 +48,9 @@ type CorporateAction struct {
 	Value  float64
 	Source string
 }
+
+// IsCash reports whether the action pays cash to holders.
+func (a CorporateAction) IsCash() bool { return a.Type == ActionDividend || a.Type == ActionJCP }
 
 // PeriodType is the length of a reporting period.
 type PeriodType string
@@ -78,4 +87,14 @@ type MacroPoint struct {
 	Date   time.Time
 	Value  float64
 	Source string
+}
+
+// IndicatorSet holds the indicators computed for one asset on one date, keyed
+// by name (see package domain/indicators for the names). A missing key means
+// the indicator could not be computed (not enough history, negative
+// earnings, ...), which is different from zero.
+type IndicatorSet struct {
+	Asset  AssetKey
+	AsOf   time.Time
+	Values map[string]float64
 }

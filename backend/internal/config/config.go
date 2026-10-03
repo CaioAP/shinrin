@@ -19,6 +19,20 @@ type Config struct {
 	LogLevel slog.Level
 	// Version is reported by /api/v1/meta (SHINRIN_VERSION, set at deploy).
 	Version string
+
+	// DatabaseURL is the Postgres connection URL (SHINRIN_DATABASE_URL).
+	// Empty means in-memory storage, which only the api role supports.
+	DatabaseURL string
+	// HistoryStart is how far back the first sync of an asset goes
+	// (SHINRIN_HISTORY_START, YYYY-MM-DD). Default 2010-01-01.
+	HistoryStart time.Time
+
+	// TiingoToken enables US end-of-day prices (SHINRIN_TIINGO_TOKEN).
+	TiingoToken string
+	// SECUserAgent is sent to SEC EDGAR, which requires an app name and a
+	// contact email, e.g. "Shinrin you@example.com" (SHINRIN_SEC_USER_AGENT).
+	// Empty disables US fundamentals.
+	SECUserAgent string
 }
 
 // Load reads settings through getenv (os.Getenv in production, a map lookup in
@@ -29,6 +43,10 @@ func Load(getenv func(string) string) (Config, error) {
 		ShutdownTimeout: 10 * time.Second,
 		LogLevel:        slog.LevelInfo,
 		Version:         or(getenv("SHINRIN_VERSION"), "dev"),
+		DatabaseURL:     getenv("SHINRIN_DATABASE_URL"),
+		HistoryStart:    time.Date(2010, 1, 1, 0, 0, 0, 0, time.UTC),
+		TiingoToken:     getenv("SHINRIN_TIINGO_TOKEN"),
+		SECUserAgent:    getenv("SHINRIN_SEC_USER_AGENT"),
 	}
 
 	if v := getenv("SHINRIN_SHUTDOWN_TIMEOUT"); v != "" {
@@ -42,6 +60,13 @@ func Load(getenv func(string) string) (Config, error) {
 		if err := c.LogLevel.UnmarshalText([]byte(strings.ToLower(v))); err != nil {
 			return Config{}, fmt.Errorf("SHINRIN_LOG_LEVEL: %w", err)
 		}
+	}
+	if v := getenv("SHINRIN_HISTORY_START"); v != "" {
+		t, err := time.Parse(time.DateOnly, v)
+		if err != nil {
+			return Config{}, fmt.Errorf("SHINRIN_HISTORY_START: %w", err)
+		}
+		c.HistoryStart = t
 	}
 	return c, nil
 }
