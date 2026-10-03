@@ -57,9 +57,49 @@ Notes for the blog post.
    stable code (`rsi_overbought`, `us_curve_inverted`), so the web app
    translates it and falls back to the English message for any new code.
 
+## Slice 2: accounts, risk profile and watchlists
+
+### What was built
+
+- **Sign-up and sign-in** with email and password. Sign-up requires ticking
+  the "not financial advice" acknowledgement, as the design asked.
+- **A six-question risk questionnaire** modeled on Brazilian suitability
+  (horizon, goal, reaction to a 20% fall, experience, liquidity needs, share
+  of savings). The result becomes the default profile for every score.
+- **Watchlists**: create, rename, delete, add from any asset page, and a
+  table of each asset's scores. The overview shows the first list.
+- **Settings**: account details, what is stored, retake the questionnaire,
+  and delete the account (password required, removes everything).
+
+### Decisions worth writing about
+
+1. **The browser never holds the session token.** Go issues it, the Nuxt
+   server puts it in an HttpOnly cookie and forwards it as a bearer token.
+   JavaScript on the page can't read it, so an XSS bug can't steal a session.
+   CSRF is handled where the cookie lives: the Nuxt server refuses any
+   state-changing request whose Origin isn't the site itself.
+2. **Store a hash of the session, not the session.** Tokens are 256 random
+   bits, so a plain SHA-256 is enough (passwords need argon2 because people
+   pick guessable ones; random tokens have no dictionary to attack). A copy
+   of the sessions table can't be replayed.
+3. **Don't tell attackers which emails exist.** Wrong email and wrong
+   password give the same answer and take the same time (an unknown email
+   still runs one argon2 verification). Five failures lock that email for 15
+   minutes.
+4. **Ownership in every query.** Every watchlist call carries the user id
+   down to SQL (`WHERE id = $2 AND user_id = $1`), so another user's list is
+   simply "not found". There is no code path that loads a list first and
+   checks the owner afterwards.
+5. **The questionnaire is codes, not text.** Go defines the questions and
+   answer codes and scores them; the web app owns the wording in both
+   languages. Adding a translation never touches scoring.
+6. **A hydration bug worth a paragraph.** An empty-string table header
+   rendered as an empty text node on the server and nothing on the client,
+   and Vue only says "hydration mismatch". Found it by diffing server HTML
+   against the hydrated DOM, then removing columns one at a time.
+
 ### Still to do in later slices
 
-- Accounts (email and password, sessions), risk questionnaire, watchlists.
 - Bring-your-own LLM key per user (encrypted), AI reports in the asset page.
 - Data freshness / routine status page.
 - Engine notes are English-only strings; give them codes like the signals so

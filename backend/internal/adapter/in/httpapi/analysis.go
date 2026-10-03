@@ -65,11 +65,7 @@ func (h analysisHandler) rank(w http.ResponseWriter, r *http.Request) {
 	}
 	out := rankingDTO{Profile: string(p), Items: make([]rankedDTO, len(rows)), Disclaimer: domain.Disclaimer}
 	for i, row := range rows {
-		scores := make(map[string]float64, len(row.Factors))
-		for _, f := range row.Factors {
-			scores[string(f.Factor)] = f.Value
-		}
-		out.Items[i] = rankedDTO{Asset: toAssetDTO(row.Asset), AsOf: dateString(row.AsOf), Composite: row.Composite, Coverage: row.Coverage, Factors: scores}
+		out.Items[i] = toRankedDTO(row)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

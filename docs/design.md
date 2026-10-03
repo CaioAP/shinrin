@@ -255,6 +255,8 @@ Users pick the provider and model in settings. The app suggests a sensible defau
 - Rate limits per user on AI and expensive endpoints.
 - LGPD basics: account deletion removes all personal data and keys; privacy page lists what is stored.
 
+**As built (phase 4, slice 2: accounts and watchlists).** Email and password with argon2id (RFC 9106 parameters, PHC format), passwords of 10 to 128 characters with no composition rules. Sessions are 256-bit random tokens; only their SHA-256 is stored, they last 30 days, and they are deleted on sign-out, expiry or account deletion. Sign-in answers the same way for an unknown email and a wrong password (and spends the same hashing time), and five failures for one email lock it for 15 minutes. The Nuxt server holds the token in an HttpOnly, Secure, SameSite=Lax cookie and checks the Origin of every state-changing request, so the browser never sees the token and the Go API is never called cross-site. The risk questionnaire has six suitability questions scored 0 to 3 (0-6 conservative, 7-13 moderate, 14-18 aggressive; money needed within a year caps it at conservative); the profile becomes the default for every composite and band, and the header selector still lets a user look through another profile. Watchlists (up to 20, 100 assets each) show each asset's scores for the profile and list unscored assets as such. Account deletion asks for the password and cascades to sessions, watchlists and AI reports. Google sign-in and per-user rate limits on AI endpoints come with the AI slice.
+
 ## 11. Frontend (Nuxt)
 
 Pages for v1:

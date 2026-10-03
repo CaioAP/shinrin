@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/CaioAP/shinrin/backend/internal/adapter/in/httpapi"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/argon2"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/b3api"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/b3cotahist"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/bcb"
@@ -23,6 +24,7 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/sp500"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/tesouro"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/tiingo"
+	"github.com/CaioAP/shinrin/backend/internal/app/account"
 	"github.com/CaioAP/shinrin/backend/internal/app/analysis"
 	"github.com/CaioAP/shinrin/backend/internal/app/analytics"
 	"github.com/CaioAP/shinrin/backend/internal/app/catalog"
@@ -31,6 +33,7 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/app/report"
 	"github.com/CaioAP/shinrin/backend/internal/app/scoring"
 	"github.com/CaioAP/shinrin/backend/internal/app/system"
+	"github.com/CaioAP/shinrin/backend/internal/app/watchlist"
 	"github.com/CaioAP/shinrin/backend/internal/config"
 	"github.com/CaioAP/shinrin/backend/internal/httpx"
 	"github.com/CaioAP/shinrin/backend/internal/port"
@@ -65,6 +68,11 @@ type stores struct {
 		port.ScoreWriter
 		port.ReportWriter
 	}
+	accounts interface {
+		port.UserRepository
+		port.SessionRepository
+		port.WatchlistRepository
+	}
 	health []port.HealthChecker
 }
 
@@ -82,6 +90,8 @@ type container struct {
 	scoring   *scoring.Service
 	analysis  port.AnalysisService
 	market    port.MarketService
+	accounts  port.AccountService
+	lists     port.WatchlistService
 	report    port.ReportService
 }
 
@@ -101,7 +111,7 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container
 		c.pool = pool
 		c.st = stores{
 			assets: store, prices: store, fundamentals: store, actions: store, indicators: store,
-			quotes: store, news: store, macro: store, bonds: store, analysis: store,
+			quotes: store, news: store, macro: store, bonds: store, analysis: store, accounts: store,
 			health: []port.HealthChecker{store},
 		}
 	} else {
@@ -109,6 +119,7 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container
 		c.st = stores{
 			assets: memory.NewAssetRepository(), prices: data, fundamentals: data, actions: data, indicators: data,
 			quotes: feeds, news: feeds, macro: feeds, bonds: feeds, analysis: memory.NewAnalysisStore(),
+			accounts: memory.NewAccountStore(),
 		}
 	}
 
@@ -151,6 +162,16 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container
 		News:    c.st.news,
 		Macro:   c.st.macro,
 	}, nil)
+	c.accounts = account.New(account.Deps{
+		Users:    c.st.accounts,
+		Sessions: c.st.accounts,
+		Hasher:   argon2.New(argon2.DefaultParams),
+	}, account.Options{})
+	c.lists = watchlist.New(watchlist.Deps{
+		Lists:    c.st.accounts,
+		Assets:   c.st.assets,
+		Analysis: c.analysis,
+	})
 	c.report = report.New(report.Deps{
 		Analysis: c.analysis,
 		News:     c.st.news,
@@ -166,6 +187,8 @@ func (c *container) httpHandler() http.Handler {
 		Catalog:  c.catalog,
 		Analysis: c.analysis,
 		Market:   c.market,
+		Accounts: c.accounts,
+		Lists:    c.lists,
 		Logger:   c.log,
 	})
 }

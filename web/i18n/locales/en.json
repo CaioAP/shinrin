@@ -3,7 +3,12 @@
     "home": "Overview",
     "explore": "Explore",
     "language": "Language",
-    "theme": "Toggle dark mode"
+    "theme": "Toggle dark mode",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "watchlists": "Watchlists",
+    "settings": "Settings",
+    "signOut": "Sign out"
   },
   "disclaimer": {
     "title": "Not financial advice.",
@@ -43,10 +48,12 @@
     "intro": "Shinrin collects prices, filings and news for B3 and US investments, scores each asset against its peers, and estimates fair value ranges and timing. Everything works without AI; reports with your own LLM key come later.",
     "explore": "Open the screener",
     "macro": "Macro",
-    "outlook": "Allocation bands for a {profile} profile",
+    "outlook": "Allocation bands: {profile} profile",
     "outlookHint": "Bands come from the profile and lean with real interest rates and the US yield curve.",
     "top": "Top scores in {market}",
-    "seeAll": "See all"
+    "seeAll": "See all",
+    "myWatchlists": "Your watchlists",
+    "takeQuestionnaire": "Answer six questions to set your risk profile."
   },
   "macro": {
     "selic": "Selic",
@@ -213,5 +220,116 @@
     "notFound": "Page not found",
     "generic": "Something went wrong",
     "home": "Back to the overview"
+  },
+  "auth": {
+    "signInTitle": "Sign in",
+    "signUpTitle": "Create your account",
+    "signUpIntro": "An account keeps your risk profile and watchlists. Market data and scores stay free to browse without one.",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 10 characters. A few random words make a strong password.",
+    "submitSignIn": "Sign in",
+    "submitSignUp": "Create account",
+    "noAccount": "No account yet?",
+    "haveAccount": "Already have an account?",
+    "acknowledge": "I understand that Shinrin is an educational tool, not financial advice, and that investment decisions are mine alone.",
+    "errors": {
+      "unauthorized": "Wrong email or password.",
+      "conflict": "That email already has an account. Try signing in.",
+      "rateLimited": "Too many attempts. Wait a few minutes and try again.",
+      "invalid": "Check the email and password: {message}",
+      "generic": "Something went wrong: {message}"
+    }
+  },
+  "onboarding": {
+    "title": "Your risk profile",
+    "intro": "Six questions, modeled on the suitability process Brazilian brokers use. Your answers set how scores are weighted and which allocation bands you see. You can retake it any time.",
+    "submit": "Save my profile",
+    "result": "Your profile is {profile}.",
+    "resultHint": "Composite scores and allocation bands now use this profile by default.",
+    "continue": "Go to the overview",
+    "skip": "Skip for now",
+    "unanswered": "Answer every question to continue."
+  },
+  "questions": {
+    "horizon": {
+      "q": "When will you need most of this money?",
+      "lt_1y": "Within a year",
+      "1_3y": "In 1 to 3 years",
+      "3_5y": "In 3 to 5 years",
+      "gt_5y": "In more than 5 years"
+    },
+    "objective": {
+      "q": "What is your main goal?",
+      "preserve": "Keep what I have safe",
+      "income": "Earn a steady income",
+      "balanced": "Grow it with moderate swings",
+      "growth": "Grow it as much as possible, accepting big swings"
+    },
+    "drawdown": {
+      "q": "Your investments fall 20% in a month. What do you do?",
+      "sell_all": "Sell everything",
+      "sell_some": "Sell part of it",
+      "hold": "Hold and wait",
+      "buy_more": "Buy more"
+    },
+    "experience": {
+      "q": "Which of these have you invested in before?",
+      "none": "Only savings accounts",
+      "fixed_income": "Bonds or bank fixed income (CDB, Tesouro)",
+      "funds_stocks": "Funds, stocks or REITs/FIIs",
+      "active": "I trade stocks or derivatives regularly"
+    },
+    "liquidity": {
+      "q": "How much of this money might you need to withdraw in the next 2 years?",
+      "most": "Most of it",
+      "some": "Some of it",
+      "little": "A little",
+      "none": "None"
+    },
+    "wealth_share": {
+      "q": "How much of your total savings is this?",
+      "gt_75": "More than 75%",
+      "50_75": "50% to 75%",
+      "25_50": "25% to 50%",
+      "lt_25": "Less than 25%"
+    }
+  },
+  "watchlists": {
+    "title": "Watchlists",
+    "intro": "Your lists of assets, scored for your profile.",
+    "empty": "No watchlists yet. Create one, then add assets from any asset page.",
+    "emptyList": "This list is empty. Add assets from any asset page.",
+    "new": "New watchlist",
+    "namePlaceholder": "Name, e.g. Dividends",
+    "create": "Create",
+    "rename": "Rename",
+    "delete": "Delete",
+    "confirmDelete": "Delete the watchlist \"{name}\"?",
+    "save": "Save",
+    "cancel": "Cancel",
+    "assets": "{n} assets",
+    "add": "Add to watchlist",
+    "signInToSave": "Sign in to save to a watchlist",
+    "remove": "Remove",
+    "notScored": "Not scored yet",
+    "open": "Open",
+    "added": "Added to {name}",
+    "removed": "Removed from {name}"
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "memberSince": "Member since {date}",
+    "profile": "Risk profile",
+    "profileNone": "You have not answered the questionnaire yet, so the moderate profile is used.",
+    "profileSet": "{profile}, answered on {date}.",
+    "take": "Answer the questionnaire",
+    "retake": "Retake the questionnaire",
+    "deleteTitle": "Delete account",
+    "deleteHint": "Deletes your account, risk profile and watchlists right away. Market data is shared and stays. This cannot be undone.",
+    "deleteConfirm": "Type your password to confirm",
+    "deleteButton": "Delete my account",
+    "privacy": "What Shinrin stores about you: your email, a hash of your password, your questionnaire answers and your watchlists. Nothing is shared or sold."
   }
 }

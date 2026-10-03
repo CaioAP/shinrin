@@ -3,7 +3,12 @@
     "home": "Visão geral",
     "explore": "Explorar",
     "language": "Idioma",
-    "theme": "Alternar modo escuro"
+    "theme": "Alternar modo escuro",
+    "signIn": "Entrar",
+    "signUp": "Criar conta",
+    "watchlists": "Listas",
+    "settings": "Configurações",
+    "signOut": "Sair"
   },
   "disclaimer": {
     "title": "Não é recomendação de investimento.",
@@ -43,10 +48,12 @@
     "intro": "O Shinrin coleta preços, documentos e notícias de investimentos da B3 e dos EUA, dá notas a cada ativo em relação aos pares e estima faixas de valor justo e momento. Tudo funciona sem IA; relatórios com sua própria chave de LLM vêm depois.",
     "explore": "Abrir o filtro de ativos",
     "macro": "Macro",
-    "outlook": "Faixas de alocação para o perfil {profile}",
+    "outlook": "Faixas de alocação: perfil {profile}",
     "outlookHint": "As faixas vêm do perfil e se inclinam conforme os juros reais e a curva de juros dos EUA.",
     "top": "Maiores notas em {market}",
-    "seeAll": "Ver todos"
+    "seeAll": "Ver todos",
+    "myWatchlists": "Suas listas",
+    "takeQuestionnaire": "Responda seis perguntas para definir seu perfil de risco."
   },
   "macro": {
     "selic": "Selic",
@@ -213,5 +220,116 @@
     "notFound": "Página não encontrada",
     "generic": "Algo deu errado",
     "home": "Voltar para a visão geral"
+  },
+  "auth": {
+    "signInTitle": "Entrar",
+    "signUpTitle": "Crie sua conta",
+    "signUpIntro": "Uma conta guarda seu perfil de risco e suas listas. Os dados de mercado e as notas continuam abertos sem conta.",
+    "email": "Email",
+    "password": "Senha",
+    "passwordHint": "Pelo menos 10 caracteres. Algumas palavras aleatórias formam uma senha forte.",
+    "submitSignIn": "Entrar",
+    "submitSignUp": "Criar conta",
+    "noAccount": "Ainda não tem conta?",
+    "haveAccount": "Já tem conta?",
+    "acknowledge": "Entendo que o Shinrin é uma ferramenta educacional, não recomendação de investimento, e que as decisões de investimento são só minhas.",
+    "errors": {
+      "unauthorized": "Email ou senha incorretos.",
+      "conflict": "Esse email já tem conta. Tente entrar.",
+      "rateLimited": "Muitas tentativas. Espere alguns minutos e tente de novo.",
+      "invalid": "Confira o email e a senha: {message}",
+      "generic": "Algo deu errado: {message}"
+    }
+  },
+  "onboarding": {
+    "title": "Seu perfil de risco",
+    "intro": "Seis perguntas, no modelo do processo de suitability das corretoras brasileiras. Suas respostas definem o peso das notas e as faixas de alocação que você vê. Você pode refazer quando quiser.",
+    "submit": "Salvar meu perfil",
+    "result": "Seu perfil é {profile}.",
+    "resultHint": "As notas compostas e as faixas de alocação passam a usar este perfil por padrão.",
+    "continue": "Ir para a visão geral",
+    "skip": "Pular por enquanto",
+    "unanswered": "Responda todas as perguntas para continuar."
+  },
+  "questions": {
+    "horizon": {
+      "q": "Quando você vai precisar da maior parte deste dinheiro?",
+      "lt_1y": "Em até um ano",
+      "1_3y": "Em 1 a 3 anos",
+      "3_5y": "Em 3 a 5 anos",
+      "gt_5y": "Em mais de 5 anos"
+    },
+    "objective": {
+      "q": "Qual é seu objetivo principal?",
+      "preserve": "Preservar o que tenho",
+      "income": "Ter uma renda constante",
+      "balanced": "Fazer crescer com oscilações moderadas",
+      "growth": "Fazer crescer o máximo possível, aceitando grandes oscilações"
+    },
+    "drawdown": {
+      "q": "Seus investimentos caem 20% em um mês. O que você faz?",
+      "sell_all": "Vendo tudo",
+      "sell_some": "Vendo uma parte",
+      "hold": "Mantenho e espero",
+      "buy_more": "Compro mais"
+    },
+    "experience": {
+      "q": "Em quais destes você já investiu?",
+      "none": "Só poupança",
+      "fixed_income": "Renda fixa (CDB, Tesouro Direto)",
+      "funds_stocks": "Fundos, ações ou FIIs",
+      "active": "Opero ações ou derivativos com frequência"
+    },
+    "liquidity": {
+      "q": "Quanto deste dinheiro você pode precisar sacar nos próximos 2 anos?",
+      "most": "A maior parte",
+      "some": "Uma parte",
+      "little": "Pouco",
+      "none": "Nada"
+    },
+    "wealth_share": {
+      "q": "Quanto do seu patrimônio total isto representa?",
+      "gt_75": "Mais de 75%",
+      "50_75": "De 50% a 75%",
+      "25_50": "De 25% a 50%",
+      "lt_25": "Menos de 25%"
+    }
+  },
+  "watchlists": {
+    "title": "Listas",
+    "intro": "Suas listas de ativos, com notas para o seu perfil.",
+    "empty": "Nenhuma lista ainda. Crie uma e adicione ativos a partir de qualquer página de ativo.",
+    "emptyList": "Esta lista está vazia. Adicione ativos a partir de qualquer página de ativo.",
+    "new": "Nova lista",
+    "namePlaceholder": "Nome, ex.: Dividendos",
+    "create": "Criar",
+    "rename": "Renomear",
+    "delete": "Excluir",
+    "confirmDelete": "Excluir a lista \"{name}\"?",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "assets": "{n} ativos",
+    "add": "Adicionar à lista",
+    "signInToSave": "Entre para salvar em uma lista",
+    "remove": "Remover",
+    "notScored": "Ainda sem nota",
+    "open": "Abrir",
+    "added": "Adicionado a {name}",
+    "removed": "Removido de {name}"
+  },
+  "settings": {
+    "title": "Configurações",
+    "account": "Conta",
+    "memberSince": "Membro desde {date}",
+    "profile": "Perfil de risco",
+    "profileNone": "Você ainda não respondeu o questionário, então o perfil moderado é usado.",
+    "profileSet": "{profile}, respondido em {date}.",
+    "take": "Responder o questionário",
+    "retake": "Refazer o questionário",
+    "deleteTitle": "Excluir conta",
+    "deleteHint": "Exclui na hora sua conta, perfil de risco e listas. Os dados de mercado são compartilhados e continuam. Não dá para desfazer.",
+    "deleteConfirm": "Digite sua senha para confirmar",
+    "deleteButton": "Excluir minha conta",
+    "privacy": "O que o Shinrin guarda sobre você: seu email, um hash da sua senha, suas respostas do questionário e suas listas. Nada é compartilhado ou vendido."
   }
 }
