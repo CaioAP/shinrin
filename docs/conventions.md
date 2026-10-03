@@ -62,8 +62,9 @@ Consequences:
 - **Driving ports** (`port/driving.go`) are the use cases: `SystemService`,
   `CatalogService`, and `Routine` (scheduled work: the `ingest` and
   `analytics` services expose their syncs as routines, which the `jobs`
-  adapter runs on a cron), `AnalysisService` (analysis, rankings, outlook)
-  and `ReportService` (AI reports).
+  adapter runs on a cron), `AnalysisService` (analysis, rankings, outlook),
+  `MarketService` (price history, dividends, news and the macro strip for
+  the web app) and `ReportService` (AI reports).
 - **Driven ports** (`port/driven.go`) are the outside world: repositories
   (`AssetReader`/`AssetWriter`, `PriceReader`/`PriceWriter`,
   `FundamentalReader`/`FundamentalWriter`, `CorporateActionReader`/`Writer`,
@@ -207,14 +208,28 @@ page/component ─▶ composable (useAssets) ─▶ useFetch('/api/assets')
   Options API.
 - Components are presentational: they take props and emit events. Data
   fetching belongs to pages and composables.
-- Scoped styles. A component library (Nuxt UI or shadcn-vue) is chosen in the
-  web app phase; until then keep CSS minimal.
+- UI is **Nuxt UI v4** (Tailwind CSS v4) with the app's colors in
+  `app/app.config.ts`. Prefer its components (`UCard`, `UTable`, `UAlert`,
+  `UBadge`, ...) and Tailwind utilities over custom CSS; write class names in
+  full (`text-success`, not `` `text-${color}` ``) so Tailwind generates them.
+  Icons are Lucide (`i-lucide-*`), bundled from `@iconify-json/lucide`; fonts
+  are system fonts, so the build downloads nothing.
+- **Every user-facing string goes through i18n** (`@nuxtjs/i18n`, English and
+  Portuguese in `i18n/locales/*.json`, keys kept in sync). Signals from Go are
+  translated by their `code`, falling back to the English `message`. Numbers,
+  money and dates use the helpers in `app/utils/format.ts` with the current
+  locale; indicator display rules live in `app/utils/metrics.ts`.
+- Charts use `lightweight-charts` inside a `.client.vue` component.
+- A missing value is shown as missing ("No data", "—", a data-gaps note),
+  never as zero and never silently dropped.
 - The disclaimer is in the default layout and must stay on every page, and at
-  the top of every AI report or suggestion.
+  the top of every AI report or suggestion. Any view that shows a score, fair
+  value or timing view also shows `<AnalysisDisclaimer>` above it.
 
 ### Checks
 
-`npm run lint` (ESLint via `@nuxt/eslint`) and `npm run typecheck` must pass.
+`npm run lint` (ESLint via `@nuxt/eslint`), `npm run typecheck` and
+`npm run build` must pass.
 
 ---
 

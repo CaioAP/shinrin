@@ -1,0 +1,217 @@
+{
+  "nav": {
+    "home": "Overview",
+    "explore": "Explore",
+    "language": "Language",
+    "theme": "Toggle dark mode"
+  },
+  "disclaimer": {
+    "title": "Not financial advice.",
+    "footer": "Shinrin is an educational analysis tool built on public data, which can be delayed or wrong. It never places orders or connects to brokerages. Investment decisions are yours alone.",
+    "analysis": "Scores, fair values and timing views are computed from public data by fixed rules. They are opinions that can be wrong, not recommendations to buy or sell."
+  },
+  "common": {
+    "loading": "Loading…",
+    "loadError": "Could not load this data: {message}",
+    "noData": "No data",
+    "asOf": "As of {date}",
+    "source": "Source: {source}",
+    "all": "All",
+    "missing": "Not available yet"
+  },
+  "profile": {
+    "label": "Risk profile",
+    "conservative": "Conservative",
+    "moderate": "Moderate",
+    "aggressive": "Aggressive"
+  },
+  "market": {
+    "label": "Market",
+    "B3": "B3 (Brazil)",
+    "US": "US"
+  },
+  "class": {
+    "label": "Class",
+    "stock": "Stock",
+    "fii": "FII",
+    "reit": "REIT",
+    "gov_bond": "Government bond",
+    "index": "Index"
+  },
+  "home": {
+    "title": "Markets, scored the way analysts screen them",
+    "intro": "Shinrin collects prices, filings and news for B3 and US investments, scores each asset against its peers, and estimates fair value ranges and timing. Everything works without AI; reports with your own LLM key come later.",
+    "explore": "Open the screener",
+    "macro": "Macro",
+    "outlook": "Allocation bands for a {profile} profile",
+    "outlookHint": "Bands come from the profile and lean with real interest rates and the US yield curve.",
+    "top": "Top scores in {market}",
+    "seeAll": "See all"
+  },
+  "macro": {
+    "selic": "Selic",
+    "cdi": "CDI",
+    "ipca_12m": "IPCA 12m",
+    "usdbrl": "USD/BRL",
+    "fed_funds": "Fed funds",
+    "ust_10y": "US 10y",
+    "us_cpi_12m": "US CPI 12m"
+  },
+  "band": {
+    "fixed_income": "Fixed income",
+    "stocks": "Stocks",
+    "real_estate": "Real estate",
+    "lean": {
+      "low": "leaning low",
+      "mid": "neutral",
+      "high": "leaning high"
+    }
+  },
+  "explore": {
+    "title": "Explore",
+    "intro": "Assets ranked by the composite score for your risk profile. Only assets the scoring routine has scored appear here.",
+    "empty": "Nothing scored yet for this filter. Scores appear after the nightly scoring routine runs.",
+    "symbol": "Asset",
+    "composite": "Composite",
+    "coverage": "Coverage",
+    "asOf": "As of"
+  },
+  "asset": {
+    "back": "Back to explore",
+    "sector": "Sector",
+    "noSector": "Sector unknown",
+    "indexMember": "Index member",
+    "price": "Last close",
+    "composite": "Composite score",
+    "compositeHint": "Weighted for a {profile} profile. Coverage: {coverage} of the weights had data.",
+    "notScored": "This asset has not been scored yet. Scores appear after the nightly scoring routine runs with enough data.",
+    "dataGaps": "Data gaps",
+    "dataGapsHint": "What could not be computed, and why. Missing data is left out of scores rather than counted as zero.",
+    "chart": "Price",
+    "chartHint": "Close adjusted for dividends and splits.",
+    "noPrices": "No prices stored for this range.",
+    "indicators": "Indicators",
+    "dividends": "Dividends and JCP",
+    "noDividends": "No cash distributions stored in the last 5 years.",
+    "news": "News and filings",
+    "noNews": "No headlines in the last 90 days.",
+    "exDate": "Ex-date",
+    "type": "Type",
+    "value": "Per share"
+  },
+  "factor": {
+    "title": "Factor scores",
+    "hint": "Each factor is a 0 to 100 percentile against peers, where higher is always better for the investor (a high risk score means low risk). Expand a factor to see why.",
+    "missing": "No data",
+    "peers": "{n} peers",
+    "metric": "Metric",
+    "value": "Value",
+    "points": "Points",
+    "weight": "Weight",
+    "valuation": "Valuation",
+    "quality": "Quality",
+    "growth": "Growth",
+    "momentum": "Momentum",
+    "income": "Income",
+    "risk": "Risk",
+    "sentiment": "Sentiment"
+  },
+  "fairValue": {
+    "title": "Fair value ranges",
+    "hint": "Estimates from simple models, shown as ranges. The marker is the last close.",
+    "none": "No fair value model had enough data.",
+    "graham": "Graham number",
+    "bazin": "Bazin (dividends)",
+    "dcf": "Discounted cash flow",
+    "price": "Price"
+  },
+  "view": {
+    "valuation": "Valuation view",
+    "timing": "Timing view",
+    "cheap": "Cheap",
+    "fair": "Fair",
+    "expensive": "Expensive",
+    "accumulate": "Accumulate",
+    "wait": "Wait",
+    "avoid": "Avoid",
+    "noSignals": "No signal fired."
+  },
+  "signals": {
+    "uptrend": "Price and the 50-day average are above the 200-day average.",
+    "downtrend": "Price and the 50-day average are below the 200-day average.",
+    "macd_positive": "MACD is above its signal line (momentum improving).",
+    "macd_negative": "MACD is below its signal line (momentum fading).",
+    "rsi_overbought": "RSI is above 70: the recent rise looks stretched.",
+    "rsi_oversold": "RSI is below 30: selling looks overdone.",
+    "near_low_cheap": "Near the 52-week low while valuation looks cheap.",
+    "near_high_expensive": "Near the 52-week high while valuation looks expensive.",
+    "valuation_cheap": "Valuation looks cheap.",
+    "valuation_expensive": "Valuation looks expensive.",
+    "cheap_vs_peers": "Multiples are low against peers.",
+    "expensive_vs_peers": "Multiples are high against peers.",
+    "below_fair_value": "Price is below the fair value range of most models.",
+    "above_fair_value": "Price is above the fair value range of most models.",
+    "high_real_rate_br": "Brazil's real interest rate is high: post-fixed bonds pay well for little risk.",
+    "low_real_rate_br": "Brazil's real interest rate is low: fixed income pays little above inflation.",
+    "us_curve_inverted": "The US yield curve is inverted (10-year below 3-month), a classic recession warning.",
+    "us_curve_normal": "The US yield curve is upward sloping."
+  },
+  "metric": {
+    "close": "Close",
+    "sma_50": "50-day average",
+    "sma_200": "200-day average",
+    "rsi_14": "RSI (14)",
+    "macd": "MACD",
+    "macd_signal": "MACD signal",
+    "macd_hist": "MACD histogram",
+    "return_1m": "Return 1m",
+    "return_3m": "Return 3m",
+    "return_6m": "Return 6m",
+    "return_12m": "Return 12m",
+    "volatility_1y": "Volatility 1y",
+    "max_drawdown_1y": "Max drawdown 1y",
+    "high_52w": "52-week high",
+    "low_52w": "52-week low",
+    "market_cap": "Market cap",
+    "enterprise_value": "Enterprise value",
+    "pe": "P/E",
+    "pb": "P/B",
+    "ps": "P/S",
+    "ev_ebitda": "EV/EBITDA",
+    "ev_ebit": "EV/EBIT",
+    "dividend_yield": "Dividend yield",
+    "fcf_yield": "FCF yield",
+    "roe": "ROE",
+    "net_margin": "Net margin",
+    "ebit_margin": "EBIT margin",
+    "net_debt_ebitda": "Net debt/EBITDA",
+    "revenue_growth_1y": "Revenue growth 1y",
+    "earnings_growth_1y": "Earnings growth 1y",
+    "revenue_cagr_3y": "Revenue CAGR 3y",
+    "price_vs_sma_200": "Price vs 200-day avg",
+    "price_vs_sma_50": "Price vs 50-day avg",
+    "from_high_52w": "From 52-week high",
+    "from_low_52w": "From 52-week low",
+    "payout_ratio": "Payout ratio",
+    "dividend_years_5y": "Years paid (of 5)",
+    "news_tone_30d": "News tone 30d",
+    "news_count_30d": "Headlines 30d"
+  },
+  "action": {
+    "dividend": "Dividend",
+    "jcp": "JCP"
+  },
+  "range": {
+    "1m": "1M",
+    "3m": "3M",
+    "6m": "6M",
+    "1y": "1Y",
+    "5y": "5Y",
+    "max": "Max"
+  },
+  "error": {
+    "notFound": "Page not found",
+    "generic": "Something went wrong",
+    "home": "Back to the overview"
+  }
+}

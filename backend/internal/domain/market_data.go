@@ -127,3 +127,22 @@ type BondQuote struct {
 	SellPrice float64
 	Source    string
 }
+
+// MacroIndicator is one headline macro number in the unit users read it in
+// (CDI as % a year rather than % a day, IPCA over twelve months rather than
+// one).
+type MacroIndicator struct {
+	Code   string // selic, cdi, ipca_12m, usdbrl, fed_funds, ust_10y, us_cpi_12m
+	Value  float64
+	Unit   string // "pct_year" or "brl_per_usd"
+	AsOf   time.Time
+	Source string
+}
+
+// MacroStrip is the dashboard's macro row. Missing lists the indicators that
+// could not be computed from stored data, so the UI can say so instead of
+// hiding them.
+type MacroStrip struct {
+	Items   []MacroIndicator
+	Missing []string
+}

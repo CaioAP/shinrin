@@ -89,3 +89,20 @@ type ReportRequest struct {
 type ReportService interface {
 	Generate(ctx context.Context, req ReportRequest) (domain.Report, error)
 }
+
+// MarketService serves an asset's stored market data to the web app (price
+// history, dividends, news) and the dashboard's macro strip.
+type MarketService interface {
+	// PriceHistory returns daily bars since from, oldest first, with
+	// AdjClose recomputed for corporate actions. It returns
+	// domain.ErrNotFound for an unknown asset.
+	PriceHistory(ctx context.Context, asset domain.AssetKey, from time.Time) ([]domain.PriceBar, error)
+	// Dividends returns cash distributions (dividends and JCP) since since,
+	// newest first.
+	Dividends(ctx context.Context, asset domain.AssetKey, since time.Time) ([]domain.CorporateAction, error)
+	// News returns up to limit of the asset's headlines from the last 90
+	// days, newest first.
+	News(ctx context.Context, asset domain.AssetKey, limit int) ([]domain.NewsItem, error)
+	// Macro returns the headline macro numbers and which ones are missing.
+	Macro(ctx context.Context) (domain.MacroStrip, error)
+}

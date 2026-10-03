@@ -1,0 +1,217 @@
+{
+  "nav": {
+    "home": "Visão geral",
+    "explore": "Explorar",
+    "language": "Idioma",
+    "theme": "Alternar modo escuro"
+  },
+  "disclaimer": {
+    "title": "Não é recomendação de investimento.",
+    "footer": "O Shinrin é uma ferramenta educacional de análise feita com dados públicos, que podem estar atrasados ou errados. Ele nunca envia ordens nem se conecta a corretoras. As decisões de investimento são só suas.",
+    "analysis": "Notas, valores justos e visões de momento são calculados a partir de dados públicos por regras fixas. São opiniões que podem estar erradas, não recomendações de compra ou venda."
+  },
+  "common": {
+    "loading": "Carregando…",
+    "loadError": "Não foi possível carregar estes dados: {message}",
+    "noData": "Sem dados",
+    "asOf": "Data-base {date}",
+    "source": "Fonte: {source}",
+    "all": "Todos",
+    "missing": "Ainda indisponível"
+  },
+  "profile": {
+    "label": "Perfil de risco",
+    "conservative": "Conservador",
+    "moderate": "Moderado",
+    "aggressive": "Arrojado"
+  },
+  "market": {
+    "label": "Mercado",
+    "B3": "B3 (Brasil)",
+    "US": "EUA"
+  },
+  "class": {
+    "label": "Classe",
+    "stock": "Ação",
+    "fii": "FII",
+    "reit": "REIT",
+    "gov_bond": "Título público",
+    "index": "Índice"
+  },
+  "home": {
+    "title": "Mercados avaliados do jeito que analistas filtram",
+    "intro": "O Shinrin coleta preços, documentos e notícias de investimentos da B3 e dos EUA, dá notas a cada ativo em relação aos pares e estima faixas de valor justo e momento. Tudo funciona sem IA; relatórios com sua própria chave de LLM vêm depois.",
+    "explore": "Abrir o filtro de ativos",
+    "macro": "Macro",
+    "outlook": "Faixas de alocação para o perfil {profile}",
+    "outlookHint": "As faixas vêm do perfil e se inclinam conforme os juros reais e a curva de juros dos EUA.",
+    "top": "Maiores notas em {market}",
+    "seeAll": "Ver todos"
+  },
+  "macro": {
+    "selic": "Selic",
+    "cdi": "CDI",
+    "ipca_12m": "IPCA 12m",
+    "usdbrl": "Dólar",
+    "fed_funds": "Fed funds",
+    "ust_10y": "Treasury 10a",
+    "us_cpi_12m": "CPI EUA 12m"
+  },
+  "band": {
+    "fixed_income": "Renda fixa",
+    "stocks": "Ações",
+    "real_estate": "Imobiliário",
+    "lean": {
+      "low": "inclinação baixa",
+      "mid": "neutro",
+      "high": "inclinação alta"
+    }
+  },
+  "explore": {
+    "title": "Explorar",
+    "intro": "Ativos ordenados pela nota composta do seu perfil de risco. Só aparecem ativos que a rotina de notas já avaliou.",
+    "empty": "Nada avaliado ainda para este filtro. As notas aparecem depois que a rotina noturna roda.",
+    "symbol": "Ativo",
+    "composite": "Nota composta",
+    "coverage": "Cobertura",
+    "asOf": "Data-base"
+  },
+  "asset": {
+    "back": "Voltar para explorar",
+    "sector": "Setor",
+    "noSector": "Setor desconhecido",
+    "indexMember": "Membro do índice",
+    "price": "Último fechamento",
+    "composite": "Nota composta",
+    "compositeHint": "Ponderada para o perfil {profile}. Cobertura: {coverage} dos pesos tinham dados.",
+    "notScored": "Este ativo ainda não foi avaliado. As notas aparecem depois que a rotina noturna roda com dados suficientes.",
+    "dataGaps": "Lacunas de dados",
+    "dataGapsHint": "O que não pôde ser calculado, e por quê. Dados ausentes ficam fora das notas em vez de contar como zero.",
+    "chart": "Preço",
+    "chartHint": "Fechamento ajustado por proventos e desdobramentos.",
+    "noPrices": "Nenhum preço armazenado neste período.",
+    "indicators": "Indicadores",
+    "dividends": "Dividendos e JCP",
+    "noDividends": "Nenhum provento em dinheiro nos últimos 5 anos.",
+    "news": "Notícias e fatos relevantes",
+    "noNews": "Nenhuma manchete nos últimos 90 dias.",
+    "exDate": "Data ex",
+    "type": "Tipo",
+    "value": "Por ação"
+  },
+  "factor": {
+    "title": "Notas por fator",
+    "hint": "Cada fator é um percentil de 0 a 100 contra os pares, onde maior é sempre melhor para o investidor (nota alta de risco significa risco baixo). Expanda um fator para ver o porquê.",
+    "missing": "Sem dados",
+    "peers": "{n} pares",
+    "metric": "Métrica",
+    "value": "Valor",
+    "points": "Pontos",
+    "weight": "Peso",
+    "valuation": "Valuation",
+    "quality": "Qualidade",
+    "growth": "Crescimento",
+    "momentum": "Momento",
+    "income": "Renda",
+    "risk": "Risco",
+    "sentiment": "Sentimento"
+  },
+  "fairValue": {
+    "title": "Faixas de valor justo",
+    "hint": "Estimativas de modelos simples, mostradas como faixas. O marcador é o último fechamento.",
+    "none": "Nenhum modelo de valor justo teve dados suficientes.",
+    "graham": "Número de Graham",
+    "bazin": "Bazin (dividendos)",
+    "dcf": "Fluxo de caixa descontado",
+    "price": "Preço"
+  },
+  "view": {
+    "valuation": "Visão de valuation",
+    "timing": "Visão de momento",
+    "cheap": "Barato",
+    "fair": "Justo",
+    "expensive": "Caro",
+    "accumulate": "Acumular",
+    "wait": "Aguardar",
+    "avoid": "Evitar",
+    "noSignals": "Nenhum sinal disparou."
+  },
+  "signals": {
+    "uptrend": "Preço e média de 50 dias acima da média de 200 dias.",
+    "downtrend": "Preço e média de 50 dias abaixo da média de 200 dias.",
+    "macd_positive": "MACD acima da linha de sinal (momento melhorando).",
+    "macd_negative": "MACD abaixo da linha de sinal (momento perdendo força).",
+    "rsi_overbought": "IFR acima de 70: a alta recente parece esticada.",
+    "rsi_oversold": "IFR abaixo de 30: a venda parece exagerada.",
+    "near_low_cheap": "Perto da mínima de 52 semanas com valuation barato.",
+    "near_high_expensive": "Perto da máxima de 52 semanas com valuation caro.",
+    "valuation_cheap": "O valuation parece barato.",
+    "valuation_expensive": "O valuation parece caro.",
+    "cheap_vs_peers": "Múltiplos baixos em relação aos pares.",
+    "expensive_vs_peers": "Múltiplos altos em relação aos pares.",
+    "below_fair_value": "Preço abaixo da faixa de valor justo da maioria dos modelos.",
+    "above_fair_value": "Preço acima da faixa de valor justo da maioria dos modelos.",
+    "high_real_rate_br": "O juro real no Brasil está alto: títulos pós-fixados pagam bem com pouco risco.",
+    "low_real_rate_br": "O juro real no Brasil está baixo: a renda fixa paga pouco acima da inflação.",
+    "us_curve_inverted": "A curva de juros dos EUA está invertida (10 anos abaixo de 3 meses), um alerta clássico de recessão.",
+    "us_curve_normal": "A curva de juros dos EUA está positivamente inclinada."
+  },
+  "metric": {
+    "close": "Fechamento",
+    "sma_50": "Média de 50 dias",
+    "sma_200": "Média de 200 dias",
+    "rsi_14": "IFR (14)",
+    "macd": "MACD",
+    "macd_signal": "Sinal do MACD",
+    "macd_hist": "Histograma do MACD",
+    "return_1m": "Retorno 1m",
+    "return_3m": "Retorno 3m",
+    "return_6m": "Retorno 6m",
+    "return_12m": "Retorno 12m",
+    "volatility_1y": "Volatilidade 1a",
+    "max_drawdown_1y": "Queda máxima 1a",
+    "high_52w": "Máxima 52 semanas",
+    "low_52w": "Mínima 52 semanas",
+    "market_cap": "Valor de mercado",
+    "enterprise_value": "Valor da firma",
+    "pe": "P/L",
+    "pb": "P/VP",
+    "ps": "P/Receita",
+    "ev_ebitda": "EV/EBITDA",
+    "ev_ebit": "EV/EBIT",
+    "dividend_yield": "Dividend yield",
+    "fcf_yield": "FCF yield",
+    "roe": "ROE",
+    "net_margin": "Margem líquida",
+    "ebit_margin": "Margem EBIT",
+    "net_debt_ebitda": "Dív. líquida/EBITDA",
+    "revenue_growth_1y": "Cresc. receita 1a",
+    "earnings_growth_1y": "Cresc. lucro 1a",
+    "revenue_cagr_3y": "CAGR receita 3a",
+    "price_vs_sma_200": "Preço vs média 200d",
+    "price_vs_sma_50": "Preço vs média 50d",
+    "from_high_52w": "Da máxima 52 sem.",
+    "from_low_52w": "Da mínima 52 sem.",
+    "payout_ratio": "Payout",
+    "dividend_years_5y": "Anos pagos (de 5)",
+    "news_tone_30d": "Tom das notícias 30d",
+    "news_count_30d": "Manchetes 30d"
+  },
+  "action": {
+    "dividend": "Dividendo",
+    "jcp": "JCP"
+  },
+  "range": {
+    "1m": "1M",
+    "3m": "3M",
+    "6m": "6M",
+    "1y": "1A",
+    "5y": "5A",
+    "max": "Máx"
+  },
+  "error": {
+    "notFound": "Página não encontrada",
+    "generic": "Algo deu errado",
+    "home": "Voltar para a visão geral"
+  }
+}

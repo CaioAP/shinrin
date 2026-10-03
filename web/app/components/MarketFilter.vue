@@ -1,34 +1,19 @@
 <script setup lang="ts">
 const market = defineModel<Market | undefined>()
+const { t } = useI18n()
 
-const options: { label: string, value: Market | undefined }[] = [
-  { label: 'All', value: undefined },
-  { label: 'B3', value: 'B3' },
-  { label: 'US', value: 'US' },
-]
+// UTabs needs string values, so "all" stands in for undefined.
+const value = computed({
+  get: () => market.value ?? 'all',
+  set: (v: string | number) => { market.value = v === 'all' ? undefined : v as Market },
+})
+const items = computed(() => [
+  { label: t('common.all'), value: 'all' },
+  { label: t('market.B3'), value: 'B3' },
+  { label: t('market.US'), value: 'US' },
+])
 </script>
 
 <template>
-  <div class="filter" role="group" aria-label="Market">
-    <button
-      v-for="opt in options"
-      :key="opt.label"
-      type="button"
-      :aria-pressed="market === opt.value"
-      @click="market = opt.value"
-    >
-      {{ opt.label }}
-    </button>
-  </div>
+  <UTabs v-model="value" :items="items" :content="false" size="sm" :aria-label="t('market.label')" />
 </template>
-
-<style scoped>
-.filter {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-button[aria-pressed='true'] {
-  font-weight: 600;
-}
-</style>

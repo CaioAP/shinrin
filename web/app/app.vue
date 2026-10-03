@@ -1,13 +1,12 @@
-<template>
-  <NuxtRouteAnnouncer />
-  <NuxtLayout>
-    <NuxtPage />
-  </NuxtLayout>
-</template>
+<script setup lang="ts">
+const { locale } = useI18n()
+useHead({ htmlAttrs: { lang: locale } })
+</script>
 
-<style>
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-}
-</style>
+<template>
+  <UApp>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+  </UApp>
+</template>
