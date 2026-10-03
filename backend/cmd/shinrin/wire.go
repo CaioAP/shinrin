@@ -23,9 +23,12 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/sp500"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/tesouro"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/tiingo"
+	"github.com/CaioAP/shinrin/backend/internal/app/analysis"
 	"github.com/CaioAP/shinrin/backend/internal/app/analytics"
 	"github.com/CaioAP/shinrin/backend/internal/app/catalog"
 	"github.com/CaioAP/shinrin/backend/internal/app/ingest"
+	"github.com/CaioAP/shinrin/backend/internal/app/report"
+	"github.com/CaioAP/shinrin/backend/internal/app/scoring"
 	"github.com/CaioAP/shinrin/backend/internal/app/system"
 	"github.com/CaioAP/shinrin/backend/internal/config"
 	"github.com/CaioAP/shinrin/backend/internal/httpx"
@@ -54,8 +57,13 @@ type stores struct {
 		port.NewsReader
 		port.NewsWriter
 	}
-	macro  port.MacroRepository
-	bonds  port.BondRepository
+	macro    port.MacroRepository
+	bonds    port.BondRepository
+	analysis interface {
+		port.ScoreReader
+		port.ScoreWriter
+		port.ReportWriter
+	}
 	health []port.HealthChecker
 }
 
@@ -70,6 +78,9 @@ type container struct {
 	catalog   port.CatalogService
 	ingest    *ingest.Service
 	analytics *analytics.Service
+	scoring   *scoring.Service
+	analysis  port.AnalysisService
+	report    port.ReportService
 }
 
 // build is the manual dependency injection for the whole app. Swap an adapter
@@ -88,14 +99,14 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container
 		c.pool = pool
 		c.st = stores{
 			assets: store, prices: store, fundamentals: store, actions: store, indicators: store,
-			quotes: store, news: store, macro: store, bonds: store,
+			quotes: store, news: store, macro: store, bonds: store, analysis: store,
 			health: []port.HealthChecker{store},
 		}
 	} else {
 		data, feeds := memory.NewMarketDataStore(), memory.NewFeedStore()
 		c.st = stores{
 			assets: memory.NewAssetRepository(), prices: data, fundamentals: data, actions: data, indicators: data,
-			quotes: feeds, news: feeds, macro: feeds, bonds: feeds,
+			quotes: feeds, news: feeds, macro: feeds, bonds: feeds, analysis: memory.NewAnalysisStore(),
 		}
 	}
 
@@ -118,14 +129,34 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container
 		Actions:      c.st.actions,
 		Indicators:   c.st.indicators,
 	}, nil, log)
+	c.scoring = scoring.New(scoring.Stores{
+		Assets:     c.st.assets,
+		Indicators: c.st.indicators,
+		Actions:    c.st.actions,
+		News:       c.st.news,
+		Scores:     c.st.analysis,
+	}, nil, log)
+	c.analysis = analysis.New(analysis.Stores{
+		Assets:     c.st.assets,
+		Scores:     c.st.analysis,
+		Indicators: c.st.indicators,
+		Macro:      c.st.macro,
+	}, nil)
+	c.report = report.New(report.Deps{
+		Analysis: c.analysis,
+		News:     c.st.news,
+		Reports:  c.st.analysis,
+		LLM:      llmConnector{},
+	}, report.Options{Logger: log})
 	return c, cleanup, nil
 }
 
 func (c *container) httpHandler() http.Handler {
 	return httpapi.NewRouter(httpapi.Deps{
-		System:  c.system,
-		Catalog: c.catalog,
-		Logger:  c.log,
+		System:   c.system,
+		Catalog:  c.catalog,
+		Analysis: c.analysis,
+		Logger:   c.log,
 	})
 }
 

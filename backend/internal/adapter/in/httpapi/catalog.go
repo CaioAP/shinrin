@@ -34,17 +34,12 @@ func (h catalogHandler) list(w http.ResponseWriter, r *http.Request) {
 
 // get handles GET /api/v1/assets/{market}/{symbol}.
 func (h catalogHandler) get(w http.ResponseWriter, r *http.Request) {
-	market, err := domain.ParseMarket(r.PathValue("market"))
+	key, err := parseAssetKey(r)
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	symbol, err := domain.NewSymbol(r.PathValue("symbol"))
-	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	a, err := h.svc.GetAsset(r.Context(), domain.AssetKey{Market: market, Symbol: symbol})
+	a, err := h.svc.GetAsset(r.Context(), key)
 	if err != nil {
 		writeDomainError(w, err)
 		return

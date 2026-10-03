@@ -45,10 +45,11 @@ func New(st Stores, now func() time.Time, logger *slog.Logger) *Service {
 
 // Windows of history each snapshot reads. Prices: 252 trading days plus room
 // for the 200-day average and holidays. Fundamentals: enough quarters to
-// derive a fourth quarter and a TTM sum.
+// derive a fourth quarter and a TTM sum, three years back for the revenue
+// CAGR plus a year of slack.
 const (
 	priceLookback        = 400 * 24 * time.Hour
-	fundamentalsLookback = 3 * 365 * 24 * time.Hour
+	fundamentalsLookback = 5 * 365 * 24 * time.Hour
 )
 
 // ComputeMarket computes and stores a snapshot for every active asset of m.
