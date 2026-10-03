@@ -233,3 +233,75 @@ export interface WatchlistEntries {
   items: WatchlistEntry[]
   disclaimer: string
 }
+
+// Bring-your-own LLM key and AI reports (backend/internal/adapter/in/httpapi/reports.go).
+// The API key is write-only: it is sent once on save and never comes back.
+
+export type LLMProvider = 'anthropic' | 'openai'
+
+export interface LLMUsage {
+  used: number
+  cap: number
+  /** First day of the current month (UTC), when the count resets. */
+  since: string
+}
+
+export interface LLMSettings {
+  /** false when the server cannot store keys (no master key configured). */
+  available: boolean
+  configured: boolean
+  provider?: LLMProvider
+  model?: string
+  baseUrl?: string
+  /** The last four characters of the saved key, e.g. "…a1b2". */
+  keyHint?: string
+  monthlyCap?: number
+  updatedAt?: string
+  usage: LLMUsage
+}
+
+/** What the settings form sends. An empty apiKey keeps the saved key. */
+export interface LLMSettingsInput {
+  provider: LLMProvider
+  model: string
+  baseUrl: string
+  apiKey: string
+  monthlyCap: number
+}
+
+export interface ReportOutput {
+  summary: string
+  bullCase: string[]
+  bearCase: string[]
+  valuationView: 'cheap' | 'fair' | 'expensive'
+  timingView: 'accumulate' | 'wait' | 'avoid'
+  fitForProfile: 'good' | 'partial' | 'poor'
+  suggestedAllocationPct: { min: number, max: number }
+  keyRisks: string[]
+  confidence: 'low' | 'medium' | 'high'
+}
+
+/** A piece of data the report cites, resolved from its input snapshot. */
+export interface CitedData {
+  key: string
+  value?: number
+  text?: string
+}
+
+export interface AIReport {
+  id: number
+  asset: AssetKey
+  profile: RiskProfile
+  /** The data's as-of date, not when the report was written. */
+  asOf: string
+  createdAt: string
+  provider: string
+  model: string
+  tokensIn: number
+  tokensOut: number
+  output: ReportOutput
+  cited: CitedData[]
+  /** Sections dropped because they cited numbers the data does not contain. */
+  omitted: string[]
+  disclaimer: string
+}

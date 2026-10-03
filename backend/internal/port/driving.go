@@ -80,6 +80,8 @@ type AnalysisService interface {
 
 // ReportRequest asks for an AI report on one asset.
 type ReportRequest struct {
+	// User owns the stored report; zero for the CLI.
+	User    domain.UserID
 	Asset   domain.AssetKey
 	Profile domain.RiskProfile
 	// Lang is the report language: "en" (default) or "pt-BR".
@@ -149,4 +151,47 @@ type WatchlistService interface {
 	// Entries returns the list's assets with scores for the profile, best
 	// composite first, unscored assets last.
 	Entries(ctx context.Context, user domain.UserID, id domain.WatchlistID, profile domain.RiskProfile) (domain.Watchlist, []WatchlistEntry, error)
+}
+
+// CredentialInput is what a user submits to save their LLM account. An
+// empty APIKey keeps the key already saved (to change only the model or
+// the cap).
+type CredentialInput struct {
+	Provider   string
+	Model      string
+	BaseURL    string
+	APIKey     string
+	MonthlyCap int
+}
+
+// CredentialService manages a user's own LLM account. The key is
+// write-only: nothing here returns it.
+type CredentialService interface {
+	// Settings returns domain.ErrNotFound when the user saved no key.
+	Settings(ctx context.Context, user domain.UserID) (domain.LLMSettings, error)
+	Save(ctx context.Context, user domain.UserID, in CredentialInput) (domain.LLMSettings, error)
+	// Test makes one tiny call with the saved key and returns
+	// domain.ErrUpstream when the provider rejects it.
+	Test(ctx context.Context, user domain.UserID) error
+	Delete(ctx context.Context, user domain.UserID) error
+}
+
+// CredentialSource opens a user's saved key for one call. It is for other
+// application services only and is never exposed over HTTP.
+type CredentialSource interface {
+	// CredentialFor returns domain.ErrNotFound when the user saved no key.
+	CredentialFor(ctx context.Context, user domain.UserID) (LLMCredential, domain.LLMSettings, error)
+	// Settings returns domain.ErrNotFound when the user saved no key.
+	Settings(ctx context.Context, user domain.UserID) (domain.LLMSettings, error)
+}
+
+// UserReportService runs AI reports for signed-in users with their saved
+// key and their monthly cap, and reads back their own reports.
+type UserReportService interface {
+	// Generate returns domain.ErrRateLimited at the monthly cap or while
+	// another report of the user's is running.
+	Generate(ctx context.Context, user domain.UserID, asset domain.AssetKey, profile domain.RiskProfile, lang string) (domain.Report, error)
+	List(ctx context.Context, user domain.UserID, asset domain.AssetKey, limit int) ([]domain.Report, error)
+	Get(ctx context.Context, user domain.UserID, id int64) (domain.Report, error)
+	Usage(ctx context.Context, user domain.UserID) (domain.LLMUsage, error)
 }

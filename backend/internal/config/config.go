@@ -45,6 +45,12 @@ type Config struct {
 	// SHINRIN_LLM_BASE_URL). Web users will bring their own keys, stored
 	// encrypted per account; this is only for running reports from the CLI.
 	LLM LLMConfig
+
+	// MasterKey (SHINRIN_MASTER_KEY, base64 of 32 random bytes, e.g.
+	// `openssl rand -base64 32`) encrypts users' saved LLM keys. Empty
+	// switches saved keys and in-app AI reports off. Losing it makes saved
+	// keys unreadable (users save them again); never log or commit it.
+	MasterKey string
 }
 
 // LLMConfig names an LLM provider account.
@@ -70,6 +76,7 @@ func Load(getenv func(string) string) (Config, error) {
 		FinnhubToken:    getenv("SHINRIN_FINNHUB_TOKEN"),
 		BrapiToken:      getenv("SHINRIN_BRAPI_TOKEN"),
 		FREDAPIKey:      getenv("SHINRIN_FRED_API_KEY"),
+		MasterKey:       getenv("SHINRIN_MASTER_KEY"),
 		LLM: LLMConfig{
 			Provider: strings.ToLower(or(getenv("SHINRIN_LLM_PROVIDER"), "anthropic")),
 			Model:    getenv("SHINRIN_LLM_MODEL"),

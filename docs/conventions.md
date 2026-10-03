@@ -65,7 +65,10 @@ Consequences:
   adapter runs on a cron), `AnalysisService` (analysis, rankings, outlook),
   `MarketService` (price history, dividends, news and the macro strip for
   the web app), `AccountService` (sign-up, sessions, risk profile),
-  `WatchlistService` and `ReportService` (AI reports).
+  `WatchlistService`, `ReportService` (AI reports), `CredentialService`
+  (a user's own LLM key, write-only), `CredentialSource` (opens a saved key
+  for one call; for other services only, never exposed over HTTP) and
+  `UserReportService` (reports for signed-in users, inside their cap).
 - **Driven ports** (`port/driven.go`) are the outside world: repositories
   (`AssetReader`/`AssetWriter`, `PriceReader`/`PriceWriter`,
   `FundamentalReader`/`FundamentalWriter`, `CorporateActionReader`/`Writer`,
@@ -73,7 +76,9 @@ Consequences:
   `MacroRepository`, `BondRepository`), market data (`UniverseSource`,
   `MarketPriceSource`, `PriceSource`, `QuoteSource`, `FundamentalsSource`,
   `CorporateActionSource`, `NewsSource`, `CompanyNewsSource`, `MacroSource`,
-  `BondSource`), analysis (`ScoreReader`/`ScoreWriter`, `ReportWriter`), AI
+  `BondSource`), analysis (`ScoreReader`/`ScoreWriter`, `ReportWriter`/`ReportReader`),
+  accounts (`UserRepository`, `SessionRepository`, `WatchlistRepository`,
+  `CredentialRepository`, `PasswordHasher`, `SecretBox`), AI
   (`LLMProvider`, and `LLMConnector`, the factory that binds a user's key),
   infrastructure (`HealthChecker`).
 - A source port returns `domain.ErrNotFound` for an asset it does not cover;
@@ -208,6 +213,11 @@ page/component ─▶ composable (useAssets) ─▶ useFetch('/api/assets')
   `useAuthStore`; pages that need one use `definePageMeta({ middleware: 'auth' })`.
   Every per-user repository call takes the user id, so another user's data
   is `ErrNotFound`, never readable.
+- **Secrets** (users' LLM keys): sealed by `port.SecretBox` with the owner's
+  id as associated data, write-only through the API (only `keyHint` comes
+  back), opened only inside a service for one call. Any error that may
+  quote a provider's reply goes through `port.RedactKey`. Never log a
+  request body, a credential or the config's `MasterKey`.
 - **Types**: API types live in `shared/types/api.ts` and must match the Go DTOs
   in `backend/internal/adapter/in/httpapi/dto.go`. Change both in the same PR.
 

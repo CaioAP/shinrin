@@ -63,7 +63,9 @@ type ReportOutput struct {
 
 // Report is a stored AI report.
 type Report struct {
-	ID       int64
+	ID int64
+	// UserID owns the report; zero for reports run from the CLI.
+	UserID   UserID
 	Kind     string
 	Asset    AssetKey
 	Profile  RiskProfile

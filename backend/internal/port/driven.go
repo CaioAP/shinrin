@@ -3,6 +3,7 @@ package port
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/CaioAP/shinrin/backend/internal/domain"
@@ -170,6 +171,16 @@ type ReportWriter interface {
 	SaveReport(ctx context.Context, r domain.Report) (int64, error)
 }
 
+// ReportReader reads a user's own AI reports. A report owned by someone
+// else is domain.ErrNotFound.
+type ReportReader interface {
+	// ReportsFor returns the user's reports on asset, newest first.
+	ReportsFor(ctx context.Context, user domain.UserID, asset domain.AssetKey, limit int) ([]domain.Report, error)
+	Report(ctx context.Context, user domain.UserID, id int64) (domain.Report, error)
+	// CountReportsSince counts the user's reports created at or after since.
+	CountReportsSince(ctx context.Context, user domain.UserID, since time.Time) (int, error)
+}
+
 // --- Accounts ----------------------------------------------------------------
 
 // UserRepository stores accounts.
@@ -219,6 +230,31 @@ type PasswordHasher interface {
 	Hash(password string) (string, error)
 	// Verify reports whether password matches hash.
 	Verify(password, hash string) (bool, error)
+}
+
+// StoredCredential is a user's LLM account as stored: the settings in the
+// clear and the API key sealed by a SecretBox.
+type StoredCredential struct {
+	Settings  domain.LLMSettings
+	SealedKey []byte
+}
+
+// CredentialRepository stores one LLM credential per user.
+type CredentialRepository interface {
+	// Credential returns domain.ErrNotFound when the user saved none.
+	Credential(ctx context.Context, user domain.UserID) (StoredCredential, error)
+	SaveCredential(ctx context.Context, user domain.UserID, c StoredCredential) error
+	DeleteCredential(ctx context.Context, user domain.UserID) error
+}
+
+// SecretBox encrypts small secrets at rest (users' API keys). aad binds a
+// sealed value to its owner, so a value copied to another row fails to
+// open.
+type SecretBox interface {
+	Seal(plaintext, aad []byte) ([]byte, error)
+	// Open returns an error when sealed was tampered with or bound to
+	// different aad.
+	Open(sealed, aad []byte) ([]byte, error)
 }
 
 // --- Market data providers ---------------------------------------------------
@@ -357,6 +393,24 @@ func KeyHint(key string) string {
 	}
 	return "…" + key[len(key)-4:]
 }
+
+// RedactKey returns err with every occurrence of key replaced, for errors
+// that may quote a provider's reply. errors.Is still sees the wrapped
+// chain.
+func RedactKey(err error, key string) error {
+	if err == nil || len(key) < 4 || !strings.Contains(err.Error(), key) {
+		return err
+	}
+	return redacted{err: err, msg: strings.ReplaceAll(err.Error(), key, "[redacted]")}
+}
+
+type redacted struct {
+	err error
+	msg string
+}
+
+func (r redacted) Error() string { return r.msg }
+func (r redacted) Unwrap() error { return r.err }
 
 // LLMConnector builds a provider client for a credential (a factory, so
 // each user's key gets its own client).

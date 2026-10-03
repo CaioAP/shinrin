@@ -214,10 +214,11 @@ func (s *Store) SaveReport(ctx context.Context, r domain.Report) (int64, error) 
 	}
 	var id int64
 	err = s.pool.QueryRow(ctx, `
-		INSERT INTO ai_reports (asset_id, kind, profile, as_of, input_snapshot, output, omitted, provider, model, tokens_in, tokens_out)
-		VALUES ((SELECT id FROM assets WHERE market = $1 AND symbol = $2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO ai_reports (asset_id, kind, profile, as_of, input_snapshot, output, omitted, provider, model, tokens_in, tokens_out, user_id, created_at)
+		VALUES ((SELECT id FROM assets WHERE market = $1 AND symbol = $2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, coalesce($14, now()))
 		RETURNING id`,
-		r.Asset.Market, r.Asset.Symbol, r.Kind, r.Profile, r.AsOf, snapJSON, outJSON, omitted, r.Provider, r.Model, r.TokensIn, r.TokensOut).Scan(&id)
+		r.Asset.Market, r.Asset.Symbol, r.Kind, r.Profile, r.AsOf, snapJSON, outJSON, omitted, r.Provider, r.Model, r.TokensIn, r.TokensOut,
+		nullUser(r.UserID), nullTime(r.CreatedAt)).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("save report: %w", err)
 	}

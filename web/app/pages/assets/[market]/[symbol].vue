@@ -135,6 +135,8 @@ useHead({ title: () => (asset.value ? `${asset.value.symbol} · Shinrin` : 'Shin
       <IndicatorGrid :indicators="analysis.indicators" :currency="currency" />
     </UCard>
 
+    <AIReportSection v-if="analysis" :asset="{ market: asset.market, symbol: asset.symbol }" :currency="currency" />
+
     <div class="grid lg:grid-cols-2 gap-6">
       <UCard>
         <template #header>

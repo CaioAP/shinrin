@@ -7,7 +7,6 @@ package report
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -62,6 +61,11 @@ const newsWindow = 30 * 24 * time.Hour
 
 // Generate implements port.ReportService.
 func (s *Service) Generate(ctx context.Context, req port.ReportRequest) (domain.Report, error) {
+	r, err := s.generate(ctx, req)
+	return r, port.RedactKey(err, req.Credential.APIKey)
+}
+
+func (s *Service) generate(ctx context.Context, req port.ReportRequest) (domain.Report, error) {
 	if req.Credential.APIKey == "" || req.Credential.Provider == "" {
 		return domain.Report{}, fmt.Errorf("%w: an LLM provider and API key are required", domain.ErrInvalid)
 	}
@@ -88,10 +92,10 @@ func (s *Service) Generate(ctx context.Context, req port.ReportRequest) (domain.
 		return llm.Generate(ctx, port.LLMRequest{Model: req.Credential.Model, System: systemPrompt, Prompt: prompt, MaxTokens: s.opt.MaxTokens, JSONSchema: schema})
 	}
 
-	r := domain.Report{Kind: domain.ReportKindAsset, Asset: req.Asset, Profile: req.Profile, AsOf: a.AsOf, Snapshot: snap, Provider: llm.Name()}
+	r := domain.Report{UserID: req.User, Kind: domain.ReportKindAsset, Asset: req.Asset, Profile: req.Profile, AsOf: a.AsOf, Snapshot: snap, Provider: llm.Name()}
 	resp, err := call(first)
 	if err != nil {
-		return domain.Report{}, fmt.Errorf("%s: %w", llm.Name(), err)
+		return domain.Report{}, fmt.Errorf("%w: %w", domain.ErrUpstream, err)
 	}
 	r.Model, r.TokensIn, r.TokensOut = resp.Model, resp.TokensIn, resp.TokensOut
 	out, problems := check(resp.Text, snap)
@@ -100,7 +104,7 @@ func (s *Service) Generate(ctx context.Context, req port.ReportRequest) (domain.
 		s.opt.Logger.Info("report failed validation, retrying", "asset", req.Asset, "problems", len(problems))
 		resp, err = call(retryPrompt(first, resp.Text, problems))
 		if err != nil {
-			return domain.Report{}, fmt.Errorf("%s retry: %w", llm.Name(), err)
+			return domain.Report{}, fmt.Errorf("%w: on retry: %w", domain.ErrUpstream, err)
 		}
 		r.TokensIn += resp.TokensIn
 		r.TokensOut += resp.TokensOut
@@ -118,7 +122,8 @@ func (s *Service) Generate(ctx context.Context, req port.ReportRequest) (domain.
 	return r, nil
 }
 
-var errLLMOutput = errors.New("invalid LLM output")
+// errLLMOutput is the provider's fault, not the server's.
+var errLLMOutput = fmt.Errorf("%w: invalid LLM output", domain.ErrUpstream)
 
 // check parses and validates one answer, returning the problems to send
 // back on a retry.

@@ -12,22 +12,25 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/port"
 )
 
-// AccountStore keeps users, sessions and watchlists in memory.
+// AccountStore keeps users, sessions, watchlists and LLM credentials in
+// memory.
 type AccountStore struct {
 	mu        sync.RWMutex
 	users     map[domain.UserID]domain.User
 	hashes    map[domain.UserID]string
 	sessions  map[string]domain.Session
 	lists     map[domain.WatchlistID]domain.Watchlist
+	creds     map[domain.UserID]port.StoredCredential
 	nextUser  domain.UserID
 	nextList  domain.WatchlistID
 	createdAt func() time.Time
 }
 
 var (
-	_ port.UserRepository      = (*AccountStore)(nil)
-	_ port.SessionRepository   = (*AccountStore)(nil)
-	_ port.WatchlistRepository = (*AccountStore)(nil)
+	_ port.UserRepository       = (*AccountStore)(nil)
+	_ port.SessionRepository    = (*AccountStore)(nil)
+	_ port.WatchlistRepository  = (*AccountStore)(nil)
+	_ port.CredentialRepository = (*AccountStore)(nil)
 )
 
 // NewAccountStore returns an empty store.
@@ -35,6 +38,7 @@ func NewAccountStore() *AccountStore {
 	return &AccountStore{
 		users: map[domain.UserID]domain.User{}, hashes: map[domain.UserID]string{},
 		sessions: map[string]domain.Session{}, lists: map[domain.WatchlistID]domain.Watchlist{},
+		creds:     map[domain.UserID]port.StoredCredential{},
 		createdAt: time.Now,
 	}
 }
@@ -107,6 +111,7 @@ func (s *AccountStore) DeleteUser(_ context.Context, id domain.UserID) error {
 	defer s.mu.Unlock()
 	delete(s.users, id)
 	delete(s.hashes, id)
+	delete(s.creds, id)
 	for k, v := range s.sessions {
 		if v.UserID == id {
 			delete(s.sessions, k)
@@ -249,4 +254,36 @@ func (s *AccountStore) nameTaken(user domain.UserID, except domain.WatchlistID, 
 		}
 	}
 	return false
+}
+
+// Credential implements port.CredentialRepository.
+func (s *AccountStore) Credential(_ context.Context, user domain.UserID) (port.StoredCredential, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	c, ok := s.creds[user]
+	if !ok {
+		return port.StoredCredential{}, domain.ErrNotFound
+	}
+	c.SealedKey = slices.Clone(c.SealedKey)
+	return c, nil
+}
+
+// SaveCredential implements port.CredentialRepository.
+func (s *AccountStore) SaveCredential(_ context.Context, user domain.UserID, c port.StoredCredential) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.users[user]; !ok {
+		return domain.ErrNotFound
+	}
+	c.SealedKey = slices.Clone(c.SealedKey)
+	s.creds[user] = c
+	return nil
+}
+
+// DeleteCredential implements port.CredentialRepository.
+func (s *AccountStore) DeleteCredential(_ context.Context, user domain.UserID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.creds, user)
+	return nil
 }

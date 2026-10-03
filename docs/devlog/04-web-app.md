@@ -98,9 +98,53 @@ Notes for the blog post.
    and Vue only says "hydration mismatch". Found it by diffing server HTML
    against the hydrated DOM, then removing columns one at a time.
 
+## Slice 3: your own LLM key and AI reports in the app
+
+Signed-in users can save their own LLM API key in Settings and get an
+analyst-style report on any scored asset, written by their model from the
+numbers Shinrin computed. The disclaimer sits at the top of every report,
+followed by the model, the date, the data's as-of date and the profile.
+The cited data is resolved from the stored snapshot, so a reader can check
+every figure.
+
+### Decisions worth writing about
+
+1. **Envelope encryption, bound to the owner.** Each key is encrypted with
+   its own random data key, and that data key is encrypted with a master key
+   that lives only in the server's environment. The user id is the
+   associated data on both layers, so copying a sealed key into someone
+   else's row (a SQL bug, a bad restore) gives a decryption error rather than
+   a working key. Rotating the master key means re-wrapping 48-byte data
+   keys, not re-encrypting values.
+2. **Write-only keys.** After saving, the API only ever shows the last four
+   characters. Changing the model or the cap without retyping the key is
+   allowed, but changing the provider or the base URL is not: otherwise
+   someone with a stolen session could point the saved key at their own
+   server and read it from the request.
+3. **A user-supplied URL is an SSRF hole until proven otherwise.** The base
+   URL (for OpenRouter and friends) must be public HTTPS, and the HTTP client
+   checks the resolved IP when it dials, which is the only check DNS
+   rebinding can't slip past. The cloud metadata address is refused by name
+   as well as by range.
+4. **Errors can leak secrets too.** Some providers quote part of the key in
+   their 401 reply. Every error that may carry provider text goes through one
+   redaction helper before it is logged or returned. Tests assert the key
+   never appears in a response body or error, and a grep of the server logs
+   after the browser run found no trace of it.
+5. **The cap is the user's own guard.** Reports run on the user's money, so
+   the cap is theirs to set; the server only enforces it, plus one report at
+   a time per user. Counting money instead of reports needs per-model prices,
+   which change too often to hard-code; that is a follow-up.
+6. **No feature flag soup.** Without `SHINRIN_MASTER_KEY` the server says
+   "AI reports are not enabled here" in the UI instead of silently storing
+   keys in the clear or crashing.
+
+Screenshots (sample report inserted for the screenshot, since the test key
+was fake): `img/04-ai-settings.png`, `img/04-ai-report.png`.
+
 ### Still to do in later slices
 
-- Bring-your-own LLM key per user (encrypted), AI reports in the asset page.
+- Run report generation as a background job, estimate cost per run.
 - Data freshness / routine status page.
 - Engine notes are English-only strings; give them codes like the signals so
   they can be translated.
