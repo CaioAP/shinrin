@@ -72,10 +72,16 @@ func TestSyncCompanyNews(t *testing.T) {
 	}
 }
 
-type fakeNews struct{ items []domain.NewsItem }
+type fakeNews struct {
+	items []domain.NewsItem
+	since *time.Time
+}
 
 func (fakeNews) Name() string { return "fake-cvm" }
 func (f fakeNews) News(_ context.Context, since time.Time) ([]domain.NewsItem, error) {
+	if f.since != nil {
+		*f.since = since
+	}
 	return f.items, nil
 }
 
@@ -83,13 +89,30 @@ func TestSyncNews(t *testing.T) {
 	f := newFixture(t, stock(petr))
 	item := domain.NewsItem{URL: "https://cvm/1", Title: "Fato Relevante", Source: "cvm:ipe", PublishedAt: today, Assets: []domain.AssetKey{petr}}
 	for range 2 { // a repeat run must not duplicate
-		if _, err := f.svc.SyncNews(context.Background(), fakeNews{items: []domain.NewsItem{item}}); err != nil {
+		if _, err := f.svc.SyncNews(context.Background(), fakeNews{items: []domain.NewsItem{item}}, 0); err != nil {
 			t.Fatal(err)
 		}
 	}
 	items, _ := f.feeds.NewsFor(context.Background(), petr, d(2025, 1, 1), 10)
 	if len(items) != 1 {
 		t.Errorf("stored %d items, want 1", len(items))
+	}
+}
+
+func TestSyncNewsLookback(t *testing.T) {
+	f := newFixture(t)
+	var since time.Time
+	if _, err := f.svc.SyncNews(context.Background(), fakeNews{since: &since}, 0); err != nil {
+		t.Fatal(err)
+	}
+	if want := today.Add(-72 * time.Hour); !since.Equal(want) {
+		t.Errorf("default since = %v, want %v", since, want)
+	}
+	if _, err := f.svc.SyncNews(context.Background(), fakeNews{since: &since}, 14*24*time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	if want := today.Add(-14 * 24 * time.Hour); !since.Equal(want) {
+		t.Errorf("override since = %v, want %v", since, want)
 	}
 }
 

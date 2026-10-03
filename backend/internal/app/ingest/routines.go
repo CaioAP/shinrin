@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"time"
 
 	"github.com/CaioAP/shinrin/backend/internal/domain"
 	"github.com/CaioAP/shinrin/backend/internal/port"
@@ -51,9 +52,10 @@ func (s *Service) CompanyNewsRoutine(name string, m domain.Market, src port.Comp
 	return routine{name, func(ctx context.Context) error { _, err := s.SyncCompanyNews(ctx, m, src); return err }}
 }
 
-// NewsRoutine syncs market-wide news.
-func (s *Service) NewsRoutine(name string, src port.NewsSource) port.Routine {
-	return routine{name, func(ctx context.Context) error { _, err := s.SyncNews(ctx, src); return err }}
+// NewsRoutine syncs market-wide news reaching lookback into the past (zero
+// for Options.NewsLookback).
+func (s *Service) NewsRoutine(name string, src port.NewsSource, lookback time.Duration) port.Routine {
+	return routine{name, func(ctx context.Context) error { _, err := s.SyncNews(ctx, src, lookback); return err }}
 }
 
 // MacroRoutine syncs the series a macro source serves.

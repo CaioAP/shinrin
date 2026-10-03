@@ -32,8 +32,10 @@ func (c *container) routines() []jobs.Entry {
 		// After the last EOD sync of both markets.
 		{Routine: c.analytics.Routine("indicators", domain.MarketB3, domain.MarketUS), Schedule: brt + "30 23 * * 1-5", Queue: "internal"},
 		// Material facts: own queue so news is not stuck behind a fundamentals
-		// backfill; the shared client still holds CVM's rate limit.
-		{Routine: c.ingest.NewsRoutine("cvm_news", cvmClient), Schedule: brt + "*/30 7-23 * * *", Queue: "cvm_news"},
+		// backfill; the shared client still holds CVM's rate limit. CVM
+		// republishes the IPE files weekly, so read two weeks back and poll
+		// twice a day rather than every few minutes.
+		{Routine: c.ingest.NewsRoutine("cvm_news", cvmClient, 14*24*time.Hour), Schedule: brt + "0 8,20 * * *", Queue: "cvm_news"},
 		{Routine: c.ingest.MacroRoutine("macro_br", c.bcb()), Schedule: brt + "0 9,19 * * *", Queue: "bcb"},
 		{Routine: c.ingest.BondsRoutine("tesouro_bonds", c.tesouro()), Schedule: brt + "0 10,19 * * 1-5", Queue: "tesouro"},
 	}

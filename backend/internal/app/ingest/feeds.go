@@ -59,9 +59,14 @@ func (s *Service) SyncCompanyNews(ctx context.Context, m domain.Market, src port
 }
 
 // SyncNews fetches market-wide news (CVM material facts), already tagged
-// with the assets each item concerns.
-func (s *Service) SyncNews(ctx context.Context, src port.NewsSource) (Result, error) {
-	items, err := src.News(ctx, s.opt.Now().Add(-s.opt.NewsLookback))
+// with the assets each item concerns. lookback overrides
+// Options.NewsLookback for sources published in batches (CVM's IPE dataset
+// is refreshed weekly); zero keeps the default.
+func (s *Service) SyncNews(ctx context.Context, src port.NewsSource, lookback time.Duration) (Result, error) {
+	if lookback == 0 {
+		lookback = s.opt.NewsLookback
+	}
+	items, err := src.News(ctx, s.opt.Now().Add(-lookback))
 	if err != nil {
 		return Result{}, fmt.Errorf("news from %s: %w", src.Name(), err)
 	}
