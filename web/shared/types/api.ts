@@ -31,3 +31,100 @@ export interface AssetFilter {
 export interface ListResponse<T> {
   items: T[]
 }
+
+// Analysis engine (backend/internal/adapter/in/httpapi/dto.go). Every
+// response carries the disclaimer; show it next to any score or view.
+
+export type RiskProfile = 'conservative' | 'moderate' | 'aggressive'
+
+export type Factor = 'valuation' | 'quality' | 'growth' | 'momentum' | 'income' | 'risk' | 'sentiment'
+
+export interface ScoreInput {
+  metric: string
+  value: number
+  /** The metric's own 0-100 contribution (peer percentile or absolute scale). */
+  points: number
+  weight: number
+  peers?: number
+}
+
+export interface FactorScore {
+  factor: Factor
+  /** 0-100, higher is always better for the investor. */
+  value: number
+  peerGroup: string
+  inputs: ScoreInput[]
+}
+
+export interface Signal {
+  code: string
+  message: string
+  weight: number
+  data?: Record<string, number>
+}
+
+export interface FairValue {
+  method: 'graham' | 'bazin' | 'dcf'
+  low: number
+  high: number
+  assumptions: Record<string, number>
+}
+
+export interface View<V extends string> {
+  view: V
+  signals: Signal[]
+}
+
+export interface Analysis {
+  asset: Asset
+  asOf: string
+  profile: RiskProfile
+  price: number
+  composite: number
+  /** Share (0-1) of the profile's factor weights that had a score. */
+  coverage: number
+  factors: FactorScore[]
+  indicators: Record<string, number>
+  fairValues: FairValue[]
+  valuation: View<'cheap' | 'fair' | 'expensive'>
+  timing: View<'accumulate' | 'wait' | 'avoid'>
+  notes: string[]
+  disclaimer: string
+}
+
+export interface RankingFilter {
+  market?: Market
+  class?: AssetClass
+  profile?: RiskProfile
+  limit?: number
+}
+
+export interface RankedAsset {
+  asset: Asset
+  asOf: string
+  composite: number
+  coverage: number
+  factors: Partial<Record<Factor, number>>
+}
+
+export interface Ranking {
+  profile: RiskProfile
+  items: RankedAsset[]
+  disclaimer: string
+}
+
+export interface AllocationBand {
+  class: 'fixed_income' | 'stocks' | 'real_estate'
+  min: number
+  max: number
+  lean: 'low' | 'mid' | 'high'
+}
+
+export interface Outlook {
+  profile: RiskProfile
+  asOf?: string
+  bands: AllocationBand[]
+  signals: Signal[]
+  notes: string[]
+  disclaimer: string
+}

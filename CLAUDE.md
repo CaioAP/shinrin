@@ -31,6 +31,7 @@ cd backend && gofmt -l . && go vet ./... && go test ./...
 go run ./cmd/shinrin api          # http://localhost:8080/healthz
 go run ./cmd/shinrin migrate      # needs SHINRIN_DATABASE_URL (see backend/.env.example)
 go run ./cmd/shinrin run <routine> # run one routine now; `worker` runs them on schedule
+go run ./cmd/shinrin report B3 PETR4 # AI report with SHINRIN_LLM_* (your own key)
 SHINRIN_TEST_DATABASE_URL=postgres://... go test ./...   # include Postgres/River tests
 
 # web

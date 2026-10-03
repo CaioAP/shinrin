@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/CaioAP/shinrin/backend/internal/domain"
@@ -121,12 +122,23 @@ type NewsReader interface {
 	NewsFor(ctx context.Context, asset domain.AssetKey, since time.Time, limit int) ([]domain.NewsItem, error)
 }
 
-// MacroRepository stores macro series observations by (series, date).
-type MacroRepository interface {
-	UpsertMacro(ctx context.Context, points []domain.MacroPoint) error
+// MacroReader reads macro series observations.
+type MacroReader interface {
+	// MacroSince returns observations dated at or after since, oldest first.
 	MacroSince(ctx context.Context, series string, since time.Time) ([]domain.MacroPoint, error)
 	// LatestMacroDate returns ok false when the series is empty.
 	LatestMacroDate(ctx context.Context, series string) (date time.Time, ok bool, err error)
+}
+
+// MacroWriter stores macro series observations by (series, date).
+type MacroWriter interface {
+	UpsertMacro(ctx context.Context, points []domain.MacroPoint) error
+}
+
+// MacroRepository is the full macro store.
+type MacroRepository interface {
+	MacroReader
+	MacroWriter
 }
 
 // BondRepository stores government bond quotes by (asset, date).
@@ -134,6 +146,28 @@ type BondRepository interface {
 	UpsertBondQuotes(ctx context.Context, quotes []domain.BondQuote) error
 	// LatestBondDate returns ok false when no bond quote is stored.
 	LatestBondDate(ctx context.Context) (date time.Time, ok bool, err error)
+}
+
+// ScoreWriter stores factor scorecards, replacing any stored for the same
+// asset and date.
+type ScoreWriter interface {
+	UpsertScorecards(ctx context.Context, cards []domain.Scorecard) error
+}
+
+// ScoreReader reads stored scorecards.
+type ScoreReader interface {
+	// LatestScorecard returns domain.ErrNotFound when the asset was never
+	// scored.
+	LatestScorecard(ctx context.Context, asset domain.AssetKey) (domain.Scorecard, error)
+	// LatestScorecards returns each scored asset's newest scorecard in a
+	// market.
+	LatestScorecards(ctx context.Context, market domain.Market) ([]domain.Scorecard, error)
+}
+
+// ReportWriter stores generated AI reports.
+type ReportWriter interface {
+	// SaveReport stores r and returns its id.
+	SaveReport(ctx context.Context, r domain.Report) (int64, error)
 }
 
 // --- Market data providers ---------------------------------------------------
@@ -247,6 +281,37 @@ type LLMResponse struct {
 type LLMProvider interface {
 	Name() string
 	Generate(ctx context.Context, req LLMRequest) (LLMResponse, error)
+}
+
+// LLMCredential is a user's own provider account (bring your own key). The
+// key is a secret: it is held in memory for one call and never logged or
+// stored in plain text.
+type LLMCredential struct {
+	Provider string // anthropic | openai (any OpenAI-compatible API)
+	Model    string // empty means the provider's default
+	APIKey   string
+	// BaseURL overrides the provider's endpoint (OpenRouter, a proxy).
+	BaseURL string
+}
+
+// String hides the key, so a credential printed by mistake leaks nothing.
+func (c LLMCredential) String() string {
+	return fmt.Sprintf("{%s %s key:%s}", c.Provider, c.Model, KeyHint(c.APIKey))
+}
+
+// KeyHint is what may be shown of a key: its last four characters.
+func KeyHint(key string) string {
+	if len(key) <= 4 {
+		return "****"
+	}
+	return "…" + key[len(key)-4:]
+}
+
+// LLMConnector builds a provider client for a credential (a factory, so
+// each user's key gets its own client).
+type LLMConnector interface {
+	// Connect returns domain.ErrInvalid for an unknown provider.
+	Connect(cred LLMCredential) (LLMProvider, error)
 }
 
 // --- Infrastructure ----------------------------------------------------------

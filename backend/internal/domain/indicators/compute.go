@@ -36,6 +36,10 @@ const (
 	NetMargin       = "net_margin"
 	EBITMargin      = "ebit_margin"
 	NetDebtToEBITDA = "net_debt_ebitda"
+
+	RevenueGrowth1Y  = "revenue_growth_1y"
+	EarningsGrowth1Y = "earnings_growth_1y"
+	RevenueCAGR3Y    = "revenue_cagr_3y"
 )
 
 // Trading-day windows for the return indicators.
@@ -101,7 +105,11 @@ func Snapshot(asset domain.AssetKey, bars []domain.PriceBar, fundamentals []doma
 	// Valuation uses the traded price, not the back-adjusted one (they are
 	// equal on the last bar, but be explicit).
 	values[Close] = last.Close
-	for k, v := range Valuation(last.Close, FundamentalsAt(domain.NewFinancials(fundamentals), actions, last.Date)) {
+	fin := domain.NewFinancials(fundamentals)
+	for k, v := range Valuation(last.Close, FundamentalsAt(fin, actions, last.Date)) {
+		values[k] = v
+	}
+	for k, v := range Growth(fin, last.Date) {
 		values[k] = v
 	}
 	return domain.IndicatorSet{Asset: asset, AsOf: last.Date, Values: values}, true

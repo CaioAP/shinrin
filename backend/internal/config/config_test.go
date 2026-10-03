@@ -1,7 +1,9 @@
 package config_test
 
 import (
+	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,5 +63,21 @@ func TestLoadPipelineSettings(t *testing.T) {
 	}
 	if _, err := config.Load(env(map[string]string{"SHINRIN_HISTORY_START": "2015"})); err == nil {
 		t.Fatal("want error for bad date")
+	}
+}
+
+func TestLoadLLM(t *testing.T) {
+	c, err := config.Load(env(map[string]string{"SHINRIN_LLM_PROVIDER": "OpenAI", "SHINRIN_LLM_MODEL": "m", "SHINRIN_LLM_API_KEY": "sk-secret"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.LLM.Provider != "openai" || c.LLM.Model != "m" || c.LLM.APIKey != "sk-secret" {
+		t.Fatalf("LLM = %+v", c.LLM)
+	}
+	if s := fmt.Sprintf("%+v", c); strings.Contains(s, "sk-secret") {
+		t.Fatalf("printed config leaks the key: %s", s)
+	}
+	if d, _ := config.Load(env(nil)); d.LLM.Provider != "anthropic" {
+		t.Fatalf("default provider = %q", d.LLM.Provider)
 	}
 }

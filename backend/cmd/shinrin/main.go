@@ -6,6 +6,8 @@
 //	shinrin worker              run scheduled ingestion and analysis routines
 //	shinrin migrate             create or upgrade the database schema
 //	shinrin run <routine>...    run routines once, now (backfills, debugging)
+//	shinrin report [-profile p] [-lang l] <market> <symbol>
+//	                            write an AI report with the SHINRIN_LLM_* key
 //
 // This package is the composition root: it is the only place that knows every
 // concrete adapter. It reads config, builds the adapters, injects them into
@@ -26,7 +28,7 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/config"
 )
 
-const usage = "usage: shinrin <api|worker|migrate|run routine...>"
+const usage = "usage: shinrin <api|worker|migrate|run routine...|report [-profile p] [-lang l] market symbol>"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -53,7 +55,7 @@ func main() {
 
 func run(ctx context.Context, cfg config.Config, log *slog.Logger, cmd string, args []string) error {
 	switch cmd {
-	case "api", "worker", "migrate", "run":
+	case "api", "worker", "migrate", "run", "report":
 	default:
 		return fmt.Errorf("unknown command %q; %s", cmd, usage)
 	}
@@ -70,6 +72,8 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger, cmd string, a
 		return runWorker(ctx, c)
 	case "migrate":
 		return migrate(ctx, c)
+	case "report":
+		return runReport(ctx, c, args, os.Stdout)
 	default:
 		return runRoutines(ctx, c, args)
 	}

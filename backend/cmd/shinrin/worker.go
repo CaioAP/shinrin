@@ -31,6 +31,10 @@ func (c *container) routines() []jobs.Entry {
 		{Routine: c.ingest.FundamentalsRoutine("cvm_fundamentals", domain.MarketB3, cvmClient), Schedule: brt + "0 7 * * *", Queue: "cvm", Timeout: 4 * time.Hour},
 		// After the last EOD sync of both markets.
 		{Routine: c.analytics.Routine("indicators", domain.MarketB3, domain.MarketUS), Schedule: brt + "30 23 * * 1-5", Queue: "internal"},
+		// Scores rank each asset against its peers, so they run over the
+		// whole universe once indicators are fresh. Same queue: River runs
+		// one job at a time per queue, so this waits for indicators.
+		{Routine: c.scoring.Routine("scoring", domain.MarketB3, domain.MarketUS), Schedule: brt + "45 23 * * 1-5", Queue: "internal"},
 		// Material facts: own queue so news is not stuck behind a fundamentals
 		// backfill; the shared client still holds CVM's rate limit. CVM
 		// republishes the IPE files weekly, so read two weeks back and poll

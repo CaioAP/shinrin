@@ -27,7 +27,7 @@ backend/
     app/<area>/         application services, one package per use-case area
     adapter/in/<name>/  driving adapters: httpapi (REST), jobs (River scheduler)
     adapter/out/<name>/ driven adapters: memory, postgres, b3cotahist, b3api, cvm, sec, tiingo,
-                        sp500; later finnhub, brapi, bcb, fred, tesouro, anthropic, ...
+                        sp500, finnhub, brapi, bcb, fred, tesouro; anthropic and openai (LLMs)
     httpx/              outbound HTTP decorators (user agent, rate limit, retry) for providers
     config/             env config, read once in cmd/
     archtest/           tests that enforce the dependency rule below
@@ -62,7 +62,8 @@ Consequences:
 - **Driving ports** (`port/driving.go`) are the use cases: `SystemService`,
   `CatalogService`, and `Routine` (scheduled work: the `ingest` and
   `analytics` services expose their syncs as routines, which the `jobs`
-  adapter runs on a cron). Later `ScoringService`, `ReportService`.
+  adapter runs on a cron), `AnalysisService` (analysis, rankings, outlook)
+  and `ReportService` (AI reports).
 - **Driven ports** (`port/driven.go`) are the outside world: repositories
   (`AssetReader`/`AssetWriter`, `PriceReader`/`PriceWriter`,
   `FundamentalReader`/`FundamentalWriter`, `CorporateActionReader`/`Writer`,
@@ -70,7 +71,8 @@ Consequences:
   `MacroRepository`, `BondRepository`), market data (`UniverseSource`,
   `MarketPriceSource`, `PriceSource`, `QuoteSource`, `FundamentalsSource`,
   `CorporateActionSource`, `NewsSource`, `CompanyNewsSource`, `MacroSource`,
-  `BondSource`), AI (`LLMProvider`),
+  `BondSource`), analysis (`ScoreReader`/`ScoreWriter`, `ReportWriter`), AI
+  (`LLMProvider`, and `LLMConnector`, the factory that binds a user's key),
   infrastructure (`HealthChecker`).
 - A source port returns `domain.ErrNotFound` for an asset it does not cover;
   ingestion skips those quietly and counts every other error as a failure.
@@ -125,7 +127,8 @@ Consequences:
 | Pattern | Where | Why |
 |---|---|---|
 | Adapter | every `adapter/out` package | wraps a provider's API behind a port |
-| Strategy | source ports passed per routine (`ingest.PricesRoutine(name, market, source, ...)`), `LLMProvider`, later scoring factors | the same ingestion code serves B3 and US from different providers, chosen at wiring time |
+| Strategy | source ports passed per routine (`ingest.PricesRoutine(name, market, source, ...)`), `LLMProvider`, scoring models (`scoring.ModelFor`: stock, financials, fund) | the same ingestion code serves B3 and US from different providers, chosen at wiring time; banks and FIIs are scored with their own metric sets |
+| Factory | `port.LLMConnector` (registry in `cmd/shinrin/llm.go`) | each user's key gets its own provider client; a new vendor is one registry entry |
 | Decorator | HTTP middleware; `httpx` round trippers (user agent, rate limit, retry) | add behaviour without touching the wrapped type |
 | Composite | `system.Service` aggregates `HealthChecker`s | one health answer from many dependencies |
 | Repository | `AssetReader` / `AssetWriter` | storage behind an interface |
@@ -146,6 +149,12 @@ name in business code.
 - `context.Context` is the first argument of anything that does I/O.
 - Logging is `log/slog`, injected, structured. Never log secrets or API keys.
 - Analysis numbers are `float64` (Shinrin analyses money, it never moves it).
+- Analysis rules (scores, fair values, views, report checks) are pure
+  functions in `domain/scoring` and `domain/report`; services only load
+  inputs and store results. An LLM never supplies a number: it explains the
+  snapshot it is given, and `domain/report.Validate` enforces that.
+- LLM API keys are secrets: never log them, never put them in prompts or
+  errors, and print credentials only through `port.LLMCredential.String`.
 
 ---
 

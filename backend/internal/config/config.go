@@ -39,6 +39,20 @@ type Config struct {
 	BrapiToken string
 	// FREDAPIKey enables US macro series (SHINRIN_FRED_API_KEY).
 	FREDAPIKey string
+
+	// LLM is the operator's own LLM account for `shinrin report`
+	// (SHINRIN_LLM_PROVIDER, SHINRIN_LLM_MODEL, SHINRIN_LLM_API_KEY,
+	// SHINRIN_LLM_BASE_URL). Web users will bring their own keys, stored
+	// encrypted per account; this is only for running reports from the CLI.
+	LLM LLMConfig
+}
+
+// LLMConfig names an LLM provider account.
+type LLMConfig struct {
+	Provider string // anthropic | openai
+	Model    string
+	APIKey   string
+	BaseURL  string
 }
 
 // Load reads settings through getenv (os.Getenv in production, a map lookup in
@@ -56,6 +70,12 @@ func Load(getenv func(string) string) (Config, error) {
 		FinnhubToken:    getenv("SHINRIN_FINNHUB_TOKEN"),
 		BrapiToken:      getenv("SHINRIN_BRAPI_TOKEN"),
 		FREDAPIKey:      getenv("SHINRIN_FRED_API_KEY"),
+		LLM: LLMConfig{
+			Provider: strings.ToLower(or(getenv("SHINRIN_LLM_PROVIDER"), "anthropic")),
+			Model:    getenv("SHINRIN_LLM_MODEL"),
+			APIKey:   getenv("SHINRIN_LLM_API_KEY"),
+			BaseURL:  getenv("SHINRIN_LLM_BASE_URL"),
+		},
 	}
 
 	if v := getenv("SHINRIN_SHUTDOWN_TIMEOUT"); v != "" {
@@ -85,4 +105,13 @@ func or(v, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// String hides the API key so a logged config never leaks it.
+func (l LLMConfig) String() string {
+	key := "unset"
+	if l.APIKey != "" {
+		key = "set"
+	}
+	return fmt.Sprintf("{%s %s key:%s}", l.Provider, l.Model, key)
 }

@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"github.com/CaioAP/shinrin/backend/internal/domain"
 )
@@ -45,4 +46,46 @@ type CatalogService interface {
 type Routine interface {
 	Name() string
 	Run(ctx context.Context) error
+}
+
+// RankFilter selects and orders a ranking. Zero values mean any market or
+// class; Limit 0 means every asset.
+type RankFilter struct {
+	Market  domain.Market
+	Class   domain.AssetClass
+	Profile domain.RiskProfile
+	Limit   int
+}
+
+// RankedAsset is one row of a ranking.
+type RankedAsset struct {
+	Asset     domain.Asset
+	AsOf      time.Time
+	Composite float64
+	Coverage  float64
+	Factors   []domain.FactorScore
+}
+
+// AnalysisService is the read side of the analysis engine: one asset's
+// analysis, a ranked screener, and the allocation outlook for a profile.
+type AnalysisService interface {
+	// Analyze returns domain.ErrNotFound when the asset is unknown or has
+	// not been scored yet.
+	Analyze(ctx context.Context, asset domain.AssetKey, profile domain.RiskProfile) (domain.Analysis, error)
+	Rank(ctx context.Context, f RankFilter) ([]RankedAsset, error)
+	Outlook(ctx context.Context, profile domain.RiskProfile) (domain.Outlook, error)
+}
+
+// ReportRequest asks for an AI report on one asset.
+type ReportRequest struct {
+	Asset   domain.AssetKey
+	Profile domain.RiskProfile
+	// Lang is the report language: "en" (default) or "pt-BR".
+	Lang       string
+	Credential LLMCredential
+}
+
+// ReportService writes AI reports with the user's own LLM key.
+type ReportService interface {
+	Generate(ctx context.Context, req ReportRequest) (domain.Report, error)
 }

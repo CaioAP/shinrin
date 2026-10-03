@@ -39,6 +39,11 @@ These are the choices behind the design, kept for the blog post.
 | 14 | S&P 500 members from the community `datasets/s-and-p-500-companies` CSV | Scrape Wikipedia; licensed S&P data | Free, includes CIK and GICS sector. Not official, so membership is refreshed weekly and an empty list is refused. |
 | 15 | Hand-written SQL on pgx with array (`unnest`) upserts; no sqlc yet | sqlc | About fifteen queries so far; one round trip writes thousands of rows. Revisit sqlc when the API read side grows. |
 | 16 | One River queue per provider, one job at a time each | One shared queue | Rate limits are per provider, so a slow Tiingo backfill never blocks B3 or CVM. |
+| 17 | Factor scores are percentiles against sector peers (market-wide when a sector has fewer than 5 members) | Absolute thresholds ("P/E under 10 is cheap") | What counts as cheap differs by sector and market; ranking within peers is how screens are built. Thresholds stay only where "good" has its own meaning (payout ratio, news tone). |
+| 18 | Composite and views are recomputed on read; only factor scores are stored | Store one composite per profile | A profile change, or new macro data, needs no batch run, and the stored scores stay profile-free. |
+| 19 | Banks, insurers and funds get their own metric sets (Strategy per asset kind) | One metric set for everything | EV/EBITDA and net debt describe neither a lender nor an FII. |
+| 20 | AI reports are checked number by number against their input; a failing section is retried once, then dropped | Trust the model; reject the whole report | Keeps decision 11's promise (the LLM can't invent figures) without throwing away a mostly good note. |
+| 21 | Anthropic through its official Go SDK; OpenAI-compatible APIs through plain HTTP | One generic client | The SDK gives structured output and server-side refusal fallback; the OpenAI format is a stable wire contract shared by many gateways. |
 
 ## 3. Scope by phase
 
@@ -185,6 +190,19 @@ Banks and insurers get their own metric set, since EBITDA and debt ratios don't 
 
 Every score keeps a `details` breakdown, so the UI can always answer "why this rating?".
 
+**As built (phase 3).** The rules are pure functions in `domain/scoring`; the `scoring` routine (weekdays 23:45 BRT, after `indicators`) stores factor scores, and `GET /api/v1/assets/{market}/{symbol}/analysis`, `/rankings` and `/outlook` derive the rest on read.
+
+| Piece | Rule |
+|---|---|
+| Factor score | Weighted mean of metric percentiles within the peer group (same market, metric set and sector). Every score is 0-100 with higher better for the investor, so a high risk score means low risk. A factor with no data is absent, not zero. |
+| Metric sets | Stocks: valuation (P/E, P/B, EV/EBITDA, FCF yield, dividend yield), quality (ROE, net and EBIT margin, net debt/EBITDA), growth (revenue and earnings growth 1y, revenue CAGR 3y), momentum (3/6/12-month return, price vs 200-day average), income (dividend yield, years paid out of 5, payout ratio), risk (volatility, max drawdown, leverage), sentiment (30-day headline tone). Financials drop EV and EBITDA metrics. FIIs and REITs: valuation, momentum, income, risk and sentiment only, until fund reports are ingested. |
+| Profile weights | Conservative favours quality, income and risk (0.25/0.20/0.20); aggressive favours growth and momentum (0.25/0.20); moderate sits between. The composite renormalises over factors present and reports their coverage. |
+| Fair value | Graham number (low end with a one-third margin of safety), Bazin (dividends / 8% to / 6%), and a five-year DCF on free cash flow at risk-free + equity premium (5% US, 6% B3), terminal growth 2% US / 4% B3, with a pessimistic and an optimistic case. The DCF is skipped with a note when no risk-free rate is stored (Selic for B3, the 10-year Treasury for the US). |
+| Valuation view | Peer valuation score (65+ cheap, 35- expensive) plus where the price sits against the fair value ranges. |
+| Timing view | Trend (price and 50-day vs 200-day average), MACD, RSI 70/30, 52-week position, and the valuation view, each a weighted signal: +1.5 or more is accumulate, -1.5 or less is avoid, otherwise wait. |
+| Allocation bands | Conservative 60-80% fixed income, 10-30% stocks, 5-15% real estate; moderate 35-55 / 30-50 / 5-20; aggressive 10-30 / 50-75 / 5-20. A real Selic of 6% or more leans fixed income high and stocks and FIIs low; 3% or less does the opposite; an inverted US curve (10-year below 3-month) leans stocks low. |
+| Sentiment | A small English and Portuguese finance lexicon over headline titles and summaries. Transparent and free; LLM sentiment only happens inside a user's AI report. |
+
 ## 9. AI layer (optional, bring your own key)
 
 **Why bring-your-own-key.** Consumer plans (ChatGPT Plus, Claude Pro) only work inside their own apps. Third-party apps can only use API keys, billed per use to the key owner.
@@ -219,6 +237,8 @@ Users pick the provider and model in settings. The app suggests a sensible defau
 5. Show the disclaimer on every report, plus model, date and data "as of".
 
 **Report types:** asset deep dive, watchlist/portfolio review (allocation vs profile bands), daily or weekly news digest for the user's watchlist.
+
+**As built (phase 3).** Asset deep dives work end to end: `app/report` builds the snapshot (`domain/report.NewSnapshot`: scores, indicators, fair values with their assumptions, signals, the profile's band for the asset class, macro signals, up to 10 headlines from the last 30 days), calls the user's provider with the design's JSON schema as structured output, and validates the reply (`domain/report.Validate`): enums, allocation inside the band, citations that exist, and every figure in the prose matching a snapshot number within rounding (percentages, "bn"/"bilhões" magnitudes and Portuguese decimals understood). Failures go back to the model once with the list of problems; whatever still fails is dropped and named in `omitted`. Reports are stored in `ai_reports` with the snapshot, model and tokens. Until accounts exist (phase 4) reports run from `shinrin report`, with the operator's key in `SHINRIN_LLM_*`; per-user encrypted keys, the monthly cap and cost estimates come with accounts. Watchlist reviews and news digests also wait for accounts.
 
 **Key security.**
 - Keys are encrypted with AES-256-GCM using a per-row data key, which is wrapped by a master key held outside the database (env secret or cloud KMS).
