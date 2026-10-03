@@ -48,11 +48,15 @@ func TestLoadPipelineSettings(t *testing.T) {
 		"SHINRIN_HISTORY_START":  "2015-01-01",
 		"SHINRIN_TIINGO_TOKEN":   "tok",
 		"SHINRIN_SEC_USER_AGENT": "Shinrin me@example.com",
+		"SHINRIN_FINNHUB_TOKEN":  "fh",
+		"SHINRIN_BRAPI_TOKEN":    "br",
+		"SHINRIN_FRED_API_KEY":   "fr",
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.DatabaseURL == "" || c.HistoryStart.Year() != 2015 || c.TiingoToken != "tok" || c.SECUserAgent == "" {
+	if c.DatabaseURL == "" || c.HistoryStart.Year() != 2015 || c.TiingoToken != "tok" || c.SECUserAgent == "" ||
+		c.FinnhubToken != "fh" || c.BrapiToken != "br" || c.FREDAPIKey != "fr" {
 		t.Fatalf("pipeline settings not applied: %+v", c)
 	}
 	if _, err := config.Load(env(map[string]string{"SHINRIN_HISTORY_START": "2015"})); err == nil {

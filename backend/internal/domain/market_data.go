@@ -98,3 +98,32 @@ type IndicatorSet struct {
 	AsOf   time.Time
 	Values map[string]float64
 }
+
+// Macro series codes stored in macro_series. Sources map their own ids (BCB
+// SGS numbers, FRED series ids) onto these.
+const (
+	SeriesSelicTarget = "selic"     // Copom target rate, % a year
+	SeriesCDI         = "cdi"       // CDI, % a day
+	SeriesIPCA        = "ipca"      // IPCA monthly change, %
+	SeriesUSDBRL      = "usdbrl"    // PTAX selling rate, BRL per USD
+	SeriesFedFunds    = "fed_funds" // effective federal funds rate, % a year
+	SeriesUST3M       = "ust_3m"    // Treasury constant maturity yields, % a year
+	SeriesUST2Y       = "ust_2y"
+	SeriesUST10Y      = "ust_10y"
+	SeriesUSCPI       = "us_cpi" // CPI-U index level
+)
+
+// BondQuote is one day of a government bond's buy and sell rates and prices
+// (Tesouro Direto). Rates are % a year; for inflation-linked bonds they are
+// the real rate on top of inflation.
+type BondQuote struct {
+	Asset     AssetKey
+	Name      string // e.g. "Tesouro IPCA+ 2035"
+	Maturity  time.Time
+	Date      time.Time
+	BuyRate   float64
+	SellRate  float64
+	BuyPrice  float64
+	SellPrice float64
+	Source    string
+}

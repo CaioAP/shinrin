@@ -1,7 +1,8 @@
 // Package ingest moves data from source ports into the stores: the index
-// universe, daily prices, corporate actions and fundamentals. It decides what
-// to fetch (only what is missing, for the assets Shinrin tracks) and leaves
-// how to fetch it to the source adapters.
+// universe, daily prices, corporate actions, fundamentals, quotes, news,
+// macro series and government bonds. It decides what to fetch (only what is
+// missing, for the assets Shinrin tracks) and leaves how to fetch it to the
+// source adapters.
 //
 // Sources are passed per call rather than held by the Service, so the same
 // code ingests B3 and US data from different providers (strategy pattern),
@@ -25,6 +26,10 @@ type Stores struct {
 	Prices       port.PriceRepository
 	Fundamentals port.FundamentalRepository
 	Actions      port.CorporateActionWriter
+	Quotes       port.QuoteWriter
+	News         port.NewsWriter
+	Macro        port.MacroRepository
+	Bonds        port.BondRepository
 }
 
 // Options tune ingestion. Zero values get defaults.
@@ -35,6 +40,9 @@ type Options struct {
 	// FundamentalsLookback is how far before the newest stored period a
 	// repeat sync re-reads, to pick up restatements. Default: 18 months.
 	FundamentalsLookback time.Duration
+	// NewsLookback is how far back each news sync reads. Runs overlap and
+	// news is deduplicated by URL. Default: 3 days.
+	NewsLookback time.Duration
 	// BatchSize caps rows per write. Default: 5000.
 	BatchSize int
 	Now       func() time.Time
@@ -54,6 +62,9 @@ func New(st Stores, opt Options) *Service {
 	}
 	if opt.FundamentalsLookback == 0 {
 		opt.FundamentalsLookback = 18 * 30 * 24 * time.Hour
+	}
+	if opt.NewsLookback == 0 {
+		opt.NewsLookback = 72 * time.Hour
 	}
 	if opt.BatchSize <= 0 {
 		opt.BatchSize = 5000
@@ -134,9 +145,9 @@ func mergeAsset(old, upd domain.Asset) domain.Asset {
 	return upd
 }
 
-// tracked lists the active assets of a market that a price or filing source
-// should cover. Index rows (the index itself) have no filings or bars from
-// these sources.
+// tracked lists the active assets of a market that a price, quote, news or
+// filing source should cover. Index rows and government bonds have their own
+// routines.
 func (s *Service) tracked(ctx context.Context, m domain.Market) ([]domain.Asset, error) {
 	all, err := s.st.Assets.ListAssets(ctx, port.AssetFilter{Market: m})
 	if err != nil {
@@ -144,7 +155,7 @@ func (s *Service) tracked(ctx context.Context, m domain.Market) ([]domain.Asset,
 	}
 	out := all[:0]
 	for _, a := range all {
-		if a.Active && a.Class != domain.ClassIndex {
+		if a.Active && a.Class != domain.ClassIndex && a.Class != domain.ClassGovBond {
 			out = append(out, a)
 		}
 	}

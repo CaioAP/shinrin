@@ -64,7 +64,7 @@ func (s *Service) ComputeMarket(ctx context.Context, m domain.Market) (int, erro
 		errs []error
 	)
 	for _, a := range assets {
-		if !a.Active || a.Class == domain.ClassIndex {
+		if !a.Active || a.Class == domain.ClassIndex || a.Class == domain.ClassGovBond {
 			continue
 		}
 		set, ok, err := s.Compute(ctx, a)

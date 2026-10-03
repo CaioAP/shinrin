@@ -49,7 +49,10 @@ type cached struct {
 	at time.Time
 }
 
-var _ port.FundamentalsSource = (*Client)(nil)
+var (
+	_ port.FundamentalsSource = (*Client)(nil)
+	_ port.NewsSource         = (*Client)(nil)
+)
 
 // New builds a client. baseURL may be empty for DefaultBaseURL; now may be
 // nil for time.Now.
@@ -137,38 +140,48 @@ func (c *Client) filing(ctx context.Context, doc string, year int) (*filing, err
 	return f, nil
 }
 
-// cnpj maps a ticker to its issuer's CNPJ using the trading codes declared
-// in the FCA of this year and the last (early in a year few FCAs are filed).
+// cnpj maps a ticker to its issuer's CNPJ.
 func (c *Client) cnpj(ctx context.Context, sym domain.Symbol) (string, error) {
-	c.mu.Lock()
-	stale := c.tickers == nil || c.now().Sub(c.tickAt) >= cacheTTL
-	c.mu.Unlock()
-	if stale {
-		tickers := map[domain.Symbol]string{}
-		year := c.now().Year()
-		for _, y := range []int{year - 1, year} { // later year overwrites
-			body, err := c.download(ctx, fmt.Sprintf("%s/FCA/DADOS/fca_cia_aberta_%d.zip", c.baseURL, y))
-			if errors.Is(err, domain.ErrNotFound) {
-				continue
-			}
-			if err != nil {
-				return "", fmt.Errorf("FCA %d: %w", y, err)
-			}
-			if err := parseTickers(body, tickers); err != nil {
-				return "", fmt.Errorf("FCA %d: %w", y, err)
-			}
-		}
-		c.mu.Lock()
-		c.tickers, c.tickAt = tickers, c.now()
-		c.mu.Unlock()
+	tickers, err := c.tickerMap(ctx)
+	if err != nil {
+		return "", err
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	cnpj, ok := c.tickers[sym]
+	cnpj, ok := tickers[sym]
 	if !ok {
 		return "", fmt.Errorf("no CVM company for %s: %w", sym, domain.ErrNotFound)
 	}
 	return cnpj, nil
+}
+
+// tickerMap returns ticker -> CNPJ from the trading codes declared in the
+// FCA of this year and the last (early in a year few FCAs are filed). The
+// map is replaced, never mutated, so callers may read it without the lock.
+func (c *Client) tickerMap(ctx context.Context) (map[domain.Symbol]string, error) {
+	c.mu.Lock()
+	if c.tickers != nil && c.now().Sub(c.tickAt) < cacheTTL {
+		defer c.mu.Unlock()
+		return c.tickers, nil
+	}
+	c.mu.Unlock()
+
+	tickers := map[domain.Symbol]string{}
+	year := c.now().Year()
+	for _, y := range []int{year - 1, year} { // later year overwrites
+		body, err := c.download(ctx, fmt.Sprintf("%s/FCA/DADOS/fca_cia_aberta_%d.zip", c.baseURL, y))
+		if errors.Is(err, domain.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("FCA %d: %w", y, err)
+		}
+		if err := parseTickers(body, tickers); err != nil {
+			return nil, fmt.Errorf("FCA %d: %w", y, err)
+		}
+	}
+	c.mu.Lock()
+	c.tickers, c.tickAt = tickers, c.now()
+	c.mu.Unlock()
+	return tickers, nil
 }
 
 func (c *Client) download(ctx context.Context, url string) ([]byte, error) {

@@ -31,6 +31,13 @@ func (c *container) routines() []jobs.Entry {
 		{Routine: c.ingest.FundamentalsRoutine("cvm_fundamentals", domain.MarketB3, cvmClient), Schedule: brt + "0 7 * * *", Queue: "cvm", Timeout: 4 * time.Hour},
 		// After the last EOD sync of both markets.
 		{Routine: c.analytics.Routine("indicators", domain.MarketB3, domain.MarketUS), Schedule: brt + "30 23 * * 1-5", Queue: "internal"},
+		// Material facts: own queue so news is not stuck behind a fundamentals
+		// backfill; the shared client still holds CVM's rate limit. CVM
+		// republishes the IPE files weekly, so read two weeks back and poll
+		// twice a day rather than every few minutes.
+		{Routine: c.ingest.NewsRoutine("cvm_news", cvmClient, 14*24*time.Hour), Schedule: brt + "0 8,20 * * *", Queue: "cvm_news"},
+		{Routine: c.ingest.MacroRoutine("macro_br", c.bcb()), Schedule: brt + "0 9,19 * * *", Queue: "bcb"},
+		{Routine: c.ingest.BondsRoutine("tesouro_bonds", c.tesouro()), Schedule: brt + "0 10,19 * * 1-5", Queue: "tesouro"},
 	}
 	if t := c.tiingo(); t != nil {
 		entries = append(entries, jobs.Entry{Routine: c.ingest.PricesRoutine("us_prices_eod", domain.MarketUS, t, t), Schedule: et + "30 18 * * 1-5", Queue: "tiingo", Timeout: 12 * time.Hour})
@@ -41,6 +48,25 @@ func (c *container) routines() []jobs.Entry {
 		entries = append(entries, jobs.Entry{Routine: c.ingest.FundamentalsRoutine("sec_fundamentals", domain.MarketUS, s), Schedule: et + "0 7 * * *", Queue: "sec", Timeout: 4 * time.Hour})
 	} else {
 		c.log.Warn("SHINRIN_SEC_USER_AGENT not set: US fundamentals are disabled")
+	}
+	if f := c.finnhub(); f != nil {
+		// One queue: both routines spend the same per-minute quota.
+		entries = append(entries,
+			jobs.Entry{Routine: c.ingest.QuotesRoutine("quotes_us", domain.MarketUS, f), Schedule: et + "*/30 9-16 * * 1-5", Queue: "finnhub", Timeout: 30 * time.Minute},
+			jobs.Entry{Routine: c.ingest.CompanyNewsRoutine("news_us", domain.MarketUS, f), Schedule: et + "15 7,12,18 * * *", Queue: "finnhub", Timeout: time.Hour},
+		)
+	} else {
+		c.log.Warn("SHINRIN_FINNHUB_TOKEN not set: US quotes and news are disabled")
+	}
+	if b := c.brapi(); b != nil {
+		entries = append(entries, jobs.Entry{Routine: c.ingest.QuotesRoutine("quotes_b3", domain.MarketB3, b), Schedule: brt + "0 10,12,14,16,18 * * 1-5", Queue: "brapi"})
+	} else {
+		c.log.Warn("SHINRIN_BRAPI_TOKEN not set: B3 intraday quotes are disabled")
+	}
+	if f := c.fred(); f != nil {
+		entries = append(entries, jobs.Entry{Routine: c.ingest.MacroRoutine("macro_us", f), Schedule: et + "0 9,18 * * *", Queue: "fred"})
+	} else {
+		c.log.Warn("SHINRIN_FRED_API_KEY not set: US macro series are disabled")
 	}
 	return entries
 }

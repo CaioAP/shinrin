@@ -66,9 +66,11 @@ Consequences:
 - **Driven ports** (`port/driven.go`) are the outside world: repositories
   (`AssetReader`/`AssetWriter`, `PriceReader`/`PriceWriter`,
   `FundamentalReader`/`FundamentalWriter`, `CorporateActionReader`/`Writer`,
-  `IndicatorReader`/`Writer`), market data (`UniverseSource`,
+  `IndicatorReader`/`Writer`, `QuoteReader`/`Writer`, `NewsReader`/`Writer`,
+  `MacroRepository`, `BondRepository`), market data (`UniverseSource`,
   `MarketPriceSource`, `PriceSource`, `QuoteSource`, `FundamentalsSource`,
-  `CorporateActionSource`, `NewsSource`, `MacroSource`), AI (`LLMProvider`),
+  `CorporateActionSource`, `NewsSource`, `CompanyNewsSource`, `MacroSource`,
+  `BondSource`), AI (`LLMProvider`),
   infrastructure (`HealthChecker`).
 - A source port returns `domain.ErrNotFound` for an asset it does not cover;
   ingestion skips those quietly and counts every other error as a failure.

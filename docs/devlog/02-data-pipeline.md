@@ -85,8 +85,33 @@ standard indicators an analyst screens with. Notes for the blog post.
   Tiingo, so every adapter is tested against fixtures written in the
   provider's documented format. The first live run is the real test.
 
+## Part 2: quotes, news, macro and bonds
+
+A second PR added five adapters (Finnhub, brapi, BCB SGS, FRED, Tesouro
+Transparente), CVM's IPE dataset as a news source, four repositories and seven
+routines. Notes worth keeping:
+
+- **Quotas shape schedules.** brapi's free plan is one ticker per request and
+  15,000 requests a month. Ibovespa's ~87 tickers five times a trading day is
+  about 9,500, so B3 quotes refresh every two hours, not every 15 minutes.
+  Finnhub allows 60 calls a minute but quotes and news are one call per
+  ticker, so both routines share one queue and US quotes refresh every 30
+  minutes.
+- **Keep partial work.** A quote run that hits a rate limit on ticker 300
+  still stores the first 299, then fails so River retries.
+- **News is idempotent by URL.** Each run re-reads three days and the store
+  dedupes, which is simpler and safer than tracking a cursor per source.
+- **Two kinds of news port.** Finnhub answers per company
+  (`CompanyNewsSource`); CVM publishes one market-wide file, tagged by CNPJ
+  (`NewsSource`). Forcing one shape on both would have meant 87 downloads of
+  the same zip, or a fake "all tickers" asset.
+- **Bonds are assets.** Each Tesouro title becomes a `gov_bond` asset keyed by
+  type and maturity (`NTNBP-20350515`), so a future watchlist can hold one
+  like any stock. Stock routines filter them out.
+- **Keys never leak into errors.** FRED takes its key in the query string;
+  Go's `url.Error` prints the full URL, so the adapter unwraps it.
+
 ## Not in this phase yet
 
-Intraday quotes (Finnhub, brapi), news (Finnhub, CVM IPE, RSS), macro (BCB,
-FRED), bonds (Tesouro, Treasury), FII monthly reports, bank fundamentals, and
-API endpoints to read prices and indicators.
+News sentiment, RSS feeds, US Treasury auctions, BCB Focus expectations, FII
+monthly reports, bank fundamentals, and API endpoints to read the data.
