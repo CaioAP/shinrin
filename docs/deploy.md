@@ -40,10 +40,14 @@ plan).
      this fits either way, and Shinrin needs far less.
    - Boot volume: 100 GB (Always Free includes 200 GB of block storage in
      total; check that the console shows the "Always Free eligible" label).
-   - Networking: let it create a new VCN and public subnet, and set
-     **Public IPv4 address: Yes**. Without it you can't SSH in, and the
-     server can't reach the internet (no Docker install, no Cloudflare
-     Tunnel), because the new network has no NAT gateway.
+   - Networking: first create the network in another tab (Networking →
+     Virtual cloud networks → Start VCN Wizard → **Create VCN with Internet
+     Connectivity**, default settings). Then pick **Select existing virtual
+     cloud network**, that VCN and its **public subnet**, and switch on
+     **Automatically assign public IPv4 address**. (With "Create new virtual
+     cloud network" in the instance form, the console greys out the public IP
+     toggle.) Without a public IP you can't SSH in and the server can't reach
+     the internet, so no Docker install and no Cloudflare Tunnel.
    - Oracle Cloud Agent plugins: the defaults are fine; Shinrin doesn't need
      Cloud Guard Workload Protection.
    - SSH keys: upload your public key (`~/.ssh/id_ed25519.pub`).
