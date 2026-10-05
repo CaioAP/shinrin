@@ -40,7 +40,12 @@ plan).
      this fits either way, and Shinrin needs far less.
    - Boot volume: 100 GB (Always Free includes 200 GB of block storage in
      total; check that the console shows the "Always Free eligible" label).
-   - Networking: keep the default VCN with a public IP.
+   - Networking: let it create a new VCN and public subnet, and set
+     **Public IPv4 address: Yes**. Without it you can't SSH in, and the
+     server can't reach the internet (no Docker install, no Cloudflare
+     Tunnel), because the new network has no NAT gateway.
+   - Oracle Cloud Agent plugins: the defaults are fine; Shinrin doesn't need
+     Cloud Guard Workload Protection.
    - SSH keys: upload your public key (`~/.ssh/id_ed25519.pub`).
    - If creation fails with "Out of capacity", try another availability
      domain or try again later; Ampere capacity comes and goes.
