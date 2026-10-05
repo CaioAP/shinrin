@@ -93,7 +93,8 @@ nano shinrin.env    # SHINRIN_MASTER_KEY and your data provider keys
 chmod 600 .env shinrin.env
 ```
 
-- `POSTGRES_PASSWORD`: `openssl rand -base64 24`.
+- `POSTGRES_PASSWORD`: `openssl rand -hex 24`. Use hex, not base64: the
+  password goes into a database URL, where `/` and `+` break it.
 - `SHINRIN_MASTER_KEY`: `openssl rand -base64 32`, generated **once**. Save a
   copy in your password manager: it encrypts users' saved LLM keys, and if it
   is lost every user has to enter their key again. Without it, AI reports are
@@ -158,6 +159,11 @@ docker compose exec -T backup pg_restore --clean --if-exists -d shinrin < backup
 
 ## Troubleshooting
 
+- **`migrate` exited 1 and nothing else started**: `docker compose logs migrate`.
+  If the database URL fails to parse or the password is rejected, set a hex
+  `POSTGRES_PASSWORD` (`openssl rand -hex 24`). Postgres keeps the password it
+  was first created with, so on a fresh install reset the empty database with
+  `docker compose down -v`, then `docker compose up -d`.
 - **The site shows a Cloudflare 502 or 1033**: `docker compose logs tunnel`
   (wrong token?) and `docker compose ps web`.
 - **Sign-in fails with "cross-site request refused"**: the tunnel's public
