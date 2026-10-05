@@ -27,6 +27,7 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/app/analytics"
 	"github.com/CaioAP/shinrin/backend/internal/app/catalog"
 	"github.com/CaioAP/shinrin/backend/internal/app/ingest"
+	"github.com/CaioAP/shinrin/backend/internal/app/market"
 	"github.com/CaioAP/shinrin/backend/internal/app/report"
 	"github.com/CaioAP/shinrin/backend/internal/app/scoring"
 	"github.com/CaioAP/shinrin/backend/internal/app/system"
@@ -80,6 +81,7 @@ type container struct {
 	analytics *analytics.Service
 	scoring   *scoring.Service
 	analysis  port.AnalysisService
+	market    port.MarketService
 	report    port.ReportService
 }
 
@@ -142,6 +144,13 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container
 		Indicators: c.st.indicators,
 		Macro:      c.st.macro,
 	}, nil)
+	c.market = market.New(market.Stores{
+		Assets:  c.st.assets,
+		Prices:  c.st.prices,
+		Actions: c.st.actions,
+		News:    c.st.news,
+		Macro:   c.st.macro,
+	}, nil)
 	c.report = report.New(report.Deps{
 		Analysis: c.analysis,
 		News:     c.st.news,
@@ -156,6 +165,7 @@ func (c *container) httpHandler() http.Handler {
 		System:   c.system,
 		Catalog:  c.catalog,
 		Analysis: c.analysis,
+		Market:   c.market,
 		Logger:   c.log,
 	})
 }

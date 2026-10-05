@@ -271,6 +271,13 @@ UI defaults: Nuxt UI or shadcn-vue for components, ECharts or Lightweight Charts
 
 The disclaimer appears in the footer of every page, at the top of every AI report and suggestion, and in onboarding as a required acknowledgement.
 
+**As built (phase 4, slice 1: read views).** Nuxt UI v4, `lightweight-charts`, and `@nuxtjs/i18n` with English and Portuguese (cookie, no URL prefix). Three pages, all reading through Nuxt server routes:
+- **Overview** (`/`): story and disclaimer, macro strip (indicators that are not stored yet are shown as "not available yet", not hidden), allocation bands for the selected profile with their macro signals, and the top five scores per market.
+- **Explore** (`/explore`): the screener, ranked by profile-weighted composite, filtered by market and class, filters kept in the URL.
+- **Asset** (`/assets/{market}/{symbol}`): composite with coverage, valuation and timing views with their signals, a data-gaps box listing unscored factors and the engine's notes, adjusted price chart (1M to max), factor scores that expand into their metrics and peer counts, fair value ranges against the price, indicators, dividends and JCP, and 90 days of news. An asset not scored yet still shows its chart, dividends and news.
+
+The risk profile is a cookie-backed Pinia preference until accounts exist. New Go endpoints for these views: `GET /api/v1/assets/{market}/{symbol}/prices?range=`, `/dividends?years=`, `/news?limit=`, and `GET /api/v1/macro` (CDI annualised over 252 days, IPCA and US CPI over twelve months), behind the `MarketService` driving port.
+
 ## 12. Deployment (default, open to change)
 
 - Docker images for `shinrin api`, `shinrin worker` and the Nuxt app.

@@ -178,3 +178,50 @@ func nonNil(s []string) []string {
 	}
 	return s
 }
+
+// Market data DTOs.
+
+type priceBarDTO struct {
+	Date     string  `json:"date"`
+	Open     float64 `json:"open"`
+	High     float64 `json:"high"`
+	Low      float64 `json:"low"`
+	Close    float64 `json:"close"`
+	AdjClose float64 `json:"adjClose"`
+	Volume   int64   `json:"volume"`
+}
+
+type pricesDTO struct {
+	Range  string        `json:"range"`
+	Source string        `json:"source,omitempty"`
+	Items  []priceBarDTO `json:"items"`
+}
+
+type dividendDTO struct {
+	ExDate string  `json:"exDate"`
+	Type   string  `json:"type"`
+	Value  float64 `json:"value"`
+	Source string  `json:"source"`
+}
+
+type newsDTO struct {
+	URL         string `json:"url"`
+	Title       string `json:"title"`
+	Summary     string `json:"summary,omitempty"`
+	Lang        string `json:"lang,omitempty"`
+	Source      string `json:"source"`
+	PublishedAt string `json:"publishedAt"`
+}
+
+type macroIndicatorDTO struct {
+	Code   string  `json:"code"`
+	Value  float64 `json:"value"`
+	Unit   string  `json:"unit"`
+	AsOf   string  `json:"asOf"`
+	Source string  `json:"source"`
+}
+
+type macroDTO struct {
+	Items   []macroIndicatorDTO `json:"items"`
+	Missing []string            `json:"missing"`
+}

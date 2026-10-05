@@ -128,3 +128,57 @@ export interface Outlook {
   notes: string[]
   disclaimer: string
 }
+
+// Market data (backend/internal/adapter/in/httpapi/market.go).
+
+export type PriceRange = '1m' | '3m' | '6m' | '1y' | '5y' | 'max'
+
+export interface PriceBar {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+  /** Close adjusted for dividends and splits. */
+  adjClose: number
+  volume: number
+}
+
+export interface PriceHistory {
+  range: PriceRange
+  source?: string
+  items: PriceBar[]
+}
+
+export interface Dividend {
+  exDate: string
+  type: 'dividend' | 'jcp'
+  /** Cash per share, in the asset's currency. */
+  value: number
+  source: string
+}
+
+export interface NewsItem {
+  url: string
+  title: string
+  summary?: string
+  lang?: string
+  source: string
+  publishedAt: string
+}
+
+export type MacroCode = 'selic' | 'cdi' | 'ipca_12m' | 'usdbrl' | 'fed_funds' | 'ust_10y' | 'us_cpi_12m'
+
+export interface MacroIndicator {
+  code: MacroCode
+  value: number
+  unit: 'pct_year' | 'brl_per_usd'
+  asOf: string
+  source: string
+}
+
+export interface MacroStrip {
+  items: MacroIndicator[]
+  /** Indicators that could not be computed from stored data. */
+  missing: MacroCode[]
+}
