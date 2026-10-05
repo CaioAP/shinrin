@@ -59,3 +59,18 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+
+  # The production images (docs/deploy.md). Built, not pushed: this catches a
+  # broken Dockerfile or compose file before anyone deploys.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: compose config
+        working-directory: deploy
+        run: |
+          cp .env.example .env && cp shinrin.env.example shinrin.env
+          sed -i 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=ci/; s/^CLOUDFLARE_TUNNEL_TOKEN=$/CLOUDFLARE_TUNNEL_TOKEN=ci/' .env
+          docker compose config --quiet
+      - run: docker build -t shinrin-backend backend
+      - run: docker build -t shinrin-web web

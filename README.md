@@ -12,6 +12,7 @@ Shinrin collects market data, company filings and news for **Brazilian (B3)** an
 | `web/` | Nuxt app (dashboard, asset pages, onboarding) |
 | `docs/design.md` | Architecture, data model, routines, scoring and AI design |
 | `docs/data-sources.md` | Free data sources for B3 and US, with limits and terms |
+| `docs/deploy.md` | Production deployment: one free Oracle server behind a Cloudflare Tunnel |
 | `docs/conventions.md` | Code conventions: hexagonal Go backend, SOLID, patterns, Nuxt conventions |
 
 ## Running locally

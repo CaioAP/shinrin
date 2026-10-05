@@ -22,6 +22,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	// The worker's cron schedules use America/Sao_Paulo; embedding the time
+	// zone database keeps them correct on minimal images without tzdata.
+	_ "time/tzdata"
 
 	"github.com/CaioAP/shinrin/backend/internal/adapter/in/jobs"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/postgres"
