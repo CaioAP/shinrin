@@ -298,3 +298,95 @@ type watchlistEntriesDTO struct {
 	Items      []watchlistEntryDTO `json:"items"`
 	Disclaimer string              `json:"disclaimer"`
 }
+
+// AI DTOs. The API key is write-only: no DTO has a field for it.
+
+type llmUsageDTO struct {
+	Used  int    `json:"used"`
+	Cap   int    `json:"cap"`
+	Since string `json:"since"`
+}
+
+type llmSettingsDTO struct {
+	// Available is false when the server has no master key, so keys cannot
+	// be saved at all.
+	Available  bool        `json:"available"`
+	Configured bool        `json:"configured"`
+	Provider   string      `json:"provider,omitempty"`
+	Model      string      `json:"model,omitempty"`
+	BaseURL    string      `json:"baseUrl,omitempty"`
+	KeyHint    string      `json:"keyHint,omitempty"`
+	MonthlyCap int         `json:"monthlyCap,omitempty"`
+	UpdatedAt  string      `json:"updatedAt,omitempty"`
+	Usage      llmUsageDTO `json:"usage"`
+}
+
+type allocationDTO struct {
+	Min float64 `json:"min"`
+	Max float64 `json:"max"`
+}
+
+type reportOutputDTO struct {
+	Summary       string        `json:"summary"`
+	BullCase      []string      `json:"bullCase"`
+	BearCase      []string      `json:"bearCase"`
+	ValuationView string        `json:"valuationView"`
+	TimingView    string        `json:"timingView"`
+	FitForProfile string        `json:"fitForProfile"`
+	Allocation    allocationDTO `json:"suggestedAllocationPct"`
+	KeyRisks      []string      `json:"keyRisks"`
+	Confidence    string        `json:"confidence"`
+}
+
+// citedDTO is one piece of data the report cites, resolved from its
+// snapshot: a number, a label or a headline.
+type citedDTO struct {
+	Key   string   `json:"key"`
+	Value *float64 `json:"value,omitempty"`
+	Text  string   `json:"text,omitempty"`
+}
+
+type reportDTO struct {
+	ID         int64           `json:"id"`
+	Asset      assetKeyDTO     `json:"asset"`
+	Profile    string          `json:"profile"`
+	AsOf       string          `json:"asOf"`
+	CreatedAt  string          `json:"createdAt"`
+	Provider   string          `json:"provider"`
+	Model      string          `json:"model"`
+	TokensIn   int             `json:"tokensIn"`
+	TokensOut  int             `json:"tokensOut"`
+	Output     reportOutputDTO `json:"output"`
+	Cited      []citedDTO      `json:"cited"`
+	Omitted    []string        `json:"omitted"`
+	Disclaimer string          `json:"disclaimer"`
+}
+
+func toReportDTO(r domain.Report) reportDTO {
+	o := r.Output
+	out := reportDTO{
+		ID: r.ID, Asset: assetKeyDTO{Market: string(r.Asset.Market), Symbol: string(r.Asset.Symbol)}, Profile: string(r.Profile),
+		AsOf: dateString(r.AsOf), CreatedAt: r.CreatedAt.UTC().Format(timeFormat), Provider: r.Provider, Model: r.Model,
+		TokensIn: r.TokensIn, TokensOut: r.TokensOut, Omitted: nonNil(r.Omitted), Disclaimer: domain.Disclaimer,
+		Output: reportOutputDTO{Summary: o.Summary, BullCase: nonNil(o.BullCase), BearCase: nonNil(o.BearCase), ValuationView: o.ValuationView,
+			TimingView: o.TimingView, FitForProfile: o.FitForProfile, Allocation: allocationDTO{o.AllocationMinPct, o.AllocationMaxPct},
+			KeyRisks: nonNil(o.KeyRisks), Confidence: o.Confidence},
+		Cited: []citedDTO{},
+	}
+	for _, k := range o.CitedData {
+		c := citedDTO{Key: k}
+		if v, ok := r.Snapshot.Facts[k]; ok {
+			c.Value = &v
+		} else if l, ok := r.Snapshot.Labels[k]; ok {
+			c.Text = l
+		} else {
+			for _, h := range r.Snapshot.Headlines {
+				if h.ID == k {
+					c.Text = h.Title
+				}
+			}
+		}
+		out.Cited = append(out.Cited, c)
+	}
+	return out
+}

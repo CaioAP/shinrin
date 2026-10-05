@@ -35,7 +35,13 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrUnauthorized):
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 	case errors.Is(err, domain.ErrRateLimited):
-		writeError(w, http.StatusTooManyRequests, domain.ErrRateLimited.Error())
+		writeError(w, http.StatusTooManyRequests, err.Error())
+	case errors.Is(err, domain.ErrUnavailable):
+		writeError(w, http.StatusServiceUnavailable, err.Error())
+	case errors.Is(err, domain.ErrUpstream):
+		// The text names the provider's status, never the key: services
+		// redact it (port.RedactKey) before it gets here.
+		writeError(w, http.StatusBadGateway, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "internal error")
 	}

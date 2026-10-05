@@ -19,7 +19,10 @@ type Deps struct {
 	Market   port.MarketService
 	Accounts port.AccountService
 	Lists    port.WatchlistService
-	Logger   *slog.Logger
+	// Credentials and Reports serve users' own LLM keys and AI reports.
+	Credentials port.CredentialService
+	Reports     port.UserReportService
+	Logger      *slog.Logger
 	// Now is the clock for relative ranges; nil means time.Now.
 	Now func() time.Time
 }
@@ -36,6 +39,7 @@ func NewRouter(d Deps) http.Handler {
 	mk := marketHandler{svc: d.Market, now: now}
 	au := authHandler{svc: d.Accounts}
 	wl := watchlistHandler{svc: d.Lists}
+	ai := aiHandler{creds: d.Credentials, reports: d.Reports}
 	user := au.requireUser
 
 	mux := http.NewServeMux()
@@ -66,6 +70,14 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("DELETE /api/v1/watchlists/{id}", user(wl.remove))
 	mux.HandleFunc("PUT /api/v1/watchlists/{id}/items/{market}/{symbol}", user(wl.addItem))
 	mux.HandleFunc("DELETE /api/v1/watchlists/{id}/items/{market}/{symbol}", user(wl.removeItem))
+
+	mux.HandleFunc("GET /api/v1/me/llm", user(ai.settings))
+	mux.HandleFunc("PUT /api/v1/me/llm", user(ai.save))
+	mux.HandleFunc("DELETE /api/v1/me/llm", user(ai.remove))
+	mux.HandleFunc("POST /api/v1/me/llm/test", user(ai.test))
+	mux.HandleFunc("GET /api/v1/assets/{market}/{symbol}/reports", user(ai.list))
+	mux.HandleFunc("POST /api/v1/assets/{market}/{symbol}/reports", user(ai.generate))
+	mux.HandleFunc("GET /api/v1/reports/{id}", user(ai.get))
 
 	return chain(mux, recoverer(d.Logger), requestLogger(d.Logger))
 }

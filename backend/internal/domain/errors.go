@@ -16,4 +16,10 @@ var (
 	ErrUnauthorized = errors.New("unauthorized")
 	// ErrRateLimited means too many attempts in a short time.
 	ErrRateLimited = errors.New("too many attempts, try again later")
+	// ErrUnavailable means a feature is switched off on this server (for
+	// example saved LLM keys without a master key configured).
+	ErrUnavailable = errors.New("not available on this server")
+	// ErrUpstream means an outside service the user chose (their LLM
+	// provider) failed or rejected the request.
+	ErrUpstream = errors.New("the LLM provider returned an error")
 )

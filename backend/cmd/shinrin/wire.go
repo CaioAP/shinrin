@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/memory"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/postgres"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/sec"
+	"github.com/CaioAP/shinrin/backend/internal/adapter/out/secretbox"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/sp500"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/tesouro"
 	"github.com/CaioAP/shinrin/backend/internal/adapter/out/tiingo"
@@ -28,11 +30,13 @@ import (
 	"github.com/CaioAP/shinrin/backend/internal/app/analysis"
 	"github.com/CaioAP/shinrin/backend/internal/app/analytics"
 	"github.com/CaioAP/shinrin/backend/internal/app/catalog"
+	"github.com/CaioAP/shinrin/backend/internal/app/credential"
 	"github.com/CaioAP/shinrin/backend/internal/app/ingest"
 	"github.com/CaioAP/shinrin/backend/internal/app/market"
 	"github.com/CaioAP/shinrin/backend/internal/app/report"
 	"github.com/CaioAP/shinrin/backend/internal/app/scoring"
 	"github.com/CaioAP/shinrin/backend/internal/app/system"
+	"github.com/CaioAP/shinrin/backend/internal/app/userreport"
 	"github.com/CaioAP/shinrin/backend/internal/app/watchlist"
 	"github.com/CaioAP/shinrin/backend/internal/config"
 	"github.com/CaioAP/shinrin/backend/internal/httpx"
@@ -67,11 +71,13 @@ type stores struct {
 		port.ScoreReader
 		port.ScoreWriter
 		port.ReportWriter
+		port.ReportReader
 	}
 	accounts interface {
 		port.UserRepository
 		port.SessionRepository
 		port.WatchlistRepository
+		port.CredentialRepository
 	}
 	health []port.HealthChecker
 }
@@ -93,6 +99,8 @@ type container struct {
 	accounts  port.AccountService
 	lists     port.WatchlistService
 	report    port.ReportService
+	creds     port.CredentialService
+	reports   port.UserReportService
 }
 
 // build is the manual dependency injection for the whole app. Swap an adapter
@@ -178,18 +186,48 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*container
 		Reports:  c.st.analysis,
 		LLM:      llmConnector{},
 	}, report.Options{Logger: log})
+
+	// Web users bring their own keys: sealed with the master key, called
+	// through the public-only connector, inside their monthly cap.
+	var box port.SecretBox
+	if cfg.MasterKey != "" {
+		key, err := secretbox.ParseKey(cfg.MasterKey)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("SHINRIN_MASTER_KEY: %w", err)
+		}
+		if box, err = secretbox.New(key); err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("SHINRIN_MASTER_KEY: %w", err)
+		}
+	}
+	web := llmConnector{publicOnly: true}
+	creds := credential.New(credential.Deps{Store: c.st.accounts, Box: box, LLM: web}, nil)
+	c.creds = creds
+	c.reports = userreport.New(userreport.Deps{
+		Credentials: creds,
+		Reports: report.New(report.Deps{
+			Analysis: c.analysis,
+			News:     c.st.news,
+			Reports:  c.st.analysis,
+			LLM:      web,
+		}, report.Options{Logger: log}),
+		Library: c.st.analysis,
+	}, nil)
 	return c, cleanup, nil
 }
 
 func (c *container) httpHandler() http.Handler {
 	return httpapi.NewRouter(httpapi.Deps{
-		System:   c.system,
-		Catalog:  c.catalog,
-		Analysis: c.analysis,
-		Market:   c.market,
-		Accounts: c.accounts,
-		Lists:    c.lists,
-		Logger:   c.log,
+		System:      c.system,
+		Catalog:     c.catalog,
+		Analysis:    c.analysis,
+		Market:      c.market,
+		Accounts:    c.accounts,
+		Lists:       c.lists,
+		Credentials: c.creds,
+		Reports:     c.reports,
+		Logger:      c.log,
 	})
 }
 

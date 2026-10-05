@@ -40,6 +40,7 @@ func (fakeAnalysis) Outlook(_ context.Context, p domain.RiskProfile) (domain.Out
 
 // fakeLLM replies with each answer in turn and records the requests.
 type fakeLLM struct {
+	fail    error
 	answers []string
 	reqs    []port.LLMRequest
 }
@@ -47,6 +48,9 @@ type fakeLLM struct {
 func (f *fakeLLM) Name() string { return "fake" }
 func (f *fakeLLM) Generate(_ context.Context, r port.LLMRequest) (port.LLMResponse, error) {
 	f.reqs = append(f.reqs, r)
+	if f.fail != nil {
+		return port.LLMResponse{}, f.fail
+	}
 	a := f.answers[0]
 	f.answers = f.answers[1:]
 	return port.LLMResponse{Text: a, Model: "fake-1", TokensIn: 100, TokensOut: 50}, nil
@@ -71,7 +75,7 @@ func run(t *testing.T, answers ...string) (domain.Report, *fakeLLM, *memory.Anal
 	store := memory.NewAnalysisStore()
 	svc := report.New(report.Deps{Analysis: fakeAnalysis{}, News: memory.NewFeedStore(), Reports: store, LLM: connector{llm}},
 		report.Options{Now: func() time.Time { return asOf.Add(24 * time.Hour) }})
-	r, err := svc.Generate(context.Background(), port.ReportRequest{Asset: petr, Profile: domain.ProfileModerate,
+	r, err := svc.Generate(context.Background(), port.ReportRequest{User: 7, Asset: petr, Profile: domain.ProfileModerate,
 		Credential: port.LLMCredential{Provider: "fake", APIKey: "sk-secret-1234"}})
 	return r, llm, store, err
 }
@@ -80,6 +84,9 @@ func TestGenerateGroundedFirstTime(t *testing.T) {
 	r, llm, store, err := run(t, good)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if r.UserID != 7 {
+		t.Errorf("owner = %d", r.UserID)
 	}
 	if len(llm.reqs) != 1 || r.Output.ValuationView != "cheap" || r.Output.AllocationMaxPct != 5 || len(r.Omitted) != 0 {
 		t.Errorf("report = %+v (%d calls)", r, len(llm.reqs))
@@ -132,6 +139,14 @@ func TestGenerateErrors(t *testing.T) {
 	_, err := svc.Generate(context.Background(), port.ReportRequest{Asset: domain.AssetKey{Market: domain.MarketB3, Symbol: "NOPE3"}, Credential: port.LLMCredential{Provider: "fake", APIKey: "k"}})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("unknown asset err = %v", err)
+	}
+	if _, _, _, err := run(t, "not json", "still not json"); !errors.Is(err, domain.ErrUpstream) {
+		t.Errorf("garbage is the provider's fault, err = %v", err)
+	}
+	failing := report.New(report.Deps{Analysis: fakeAnalysis{}, News: memory.NewFeedStore(), Reports: memory.NewAnalysisStore(), LLM: connector{&fakeLLM{fail: errors.New("HTTP 401: bad key sk-secret-1234")}}}, report.Options{})
+	_, err = failing.Generate(context.Background(), port.ReportRequest{Asset: petr, Credential: port.LLMCredential{Provider: "fake", APIKey: "sk-secret-1234"}})
+	if !errors.Is(err, domain.ErrUpstream) || strings.Contains(err.Error(), "sk-secret-1234") {
+		t.Errorf("provider failure err = %v", err)
 	}
 	if got := (port.LLMCredential{Provider: "anthropic", APIKey: "sk-ant-abcdef9876"}).String(); strings.Contains(got, "abcdef") || !strings.Contains(got, "9876") {
 		t.Errorf("credential String() = %q", got)

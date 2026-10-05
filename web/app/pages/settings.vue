@@ -49,6 +49,8 @@ useHead({ title: () => `${t('settings.title')} · Shinrin` })
       <UButton to="/onboarding" variant="outline" class="mt-3">{{ auth.user.profile ? t('settings.retake') : t('settings.take') }}</UButton>
     </UCard>
 
+    <AISettingsCard />
+
     <UCard :ui="{ root: 'ring-error/50' }">
       <template #header>
         <h2 class="font-medium text-error">{{ t('settings.deleteTitle') }}</h2>

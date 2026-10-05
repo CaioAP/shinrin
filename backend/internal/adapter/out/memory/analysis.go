@@ -5,6 +5,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/CaioAP/shinrin/backend/internal/domain"
 	"github.com/CaioAP/shinrin/backend/internal/port"
@@ -22,6 +23,7 @@ var (
 	_ port.ScoreReader  = (*AnalysisStore)(nil)
 	_ port.ScoreWriter  = (*AnalysisStore)(nil)
 	_ port.ReportWriter = (*AnalysisStore)(nil)
+	_ port.ReportReader = (*AnalysisStore)(nil)
 )
 
 // NewAnalysisStore returns an empty store.
@@ -84,4 +86,41 @@ func (s *AnalysisStore) Reports() []domain.Report {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return slices.Clone(s.reports)
+}
+
+// ReportsFor implements port.ReportReader. (Deleting an account in the
+// in-memory store does not remove its reports; Postgres cascades.)
+func (s *AnalysisStore) ReportsFor(_ context.Context, user domain.UserID, asset domain.AssetKey, limit int) ([]domain.Report, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []domain.Report
+	for i := len(s.reports) - 1; i >= 0 && len(out) < limit; i-- {
+		if r := s.reports[i]; r.UserID == user && user != 0 && r.Asset == asset {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+// Report implements port.ReportReader.
+func (s *AnalysisStore) Report(_ context.Context, user domain.UserID, id int64) (domain.Report, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if id < 1 || id > int64(len(s.reports)) || user == 0 || s.reports[id-1].UserID != user {
+		return domain.Report{}, domain.ErrNotFound
+	}
+	return s.reports[id-1], nil
+}
+
+// CountReportsSince implements port.ReportReader.
+func (s *AnalysisStore) CountReportsSince(_ context.Context, user domain.UserID, since time.Time) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	n := 0
+	for _, r := range s.reports {
+		if r.UserID == user && !r.CreatedAt.Before(since) {
+			n++
+		}
+	}
+	return n, nil
 }
