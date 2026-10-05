@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/CaioAP/shinrin/backend/internal/domain"
+	"github.com/CaioAP/shinrin/backend/internal/port"
 )
 
 // DTOs decouple the JSON contract from domain structs, so renaming a domain
@@ -108,6 +109,14 @@ type rankedDTO struct {
 	Composite float64            `json:"composite"`
 	Coverage  float64            `json:"coverage"`
 	Factors   map[string]float64 `json:"factors"`
+}
+
+func toRankedDTO(r port.RankedAsset) rankedDTO {
+	scores := make(map[string]float64, len(r.Factors))
+	for _, f := range r.Factors {
+		scores[string(f.Factor)] = f.Value
+	}
+	return rankedDTO{Asset: toAssetDTO(r.Asset), AsOf: dateString(r.AsOf), Composite: r.Composite, Coverage: r.Coverage, Factors: scores}
 }
 
 type rankingDTO struct {
@@ -224,4 +233,68 @@ type macroIndicatorDTO struct {
 type macroDTO struct {
 	Items   []macroIndicatorDTO `json:"items"`
 	Missing []string            `json:"missing"`
+}
+
+// Account DTOs.
+
+const timeFormat = time.RFC3339
+
+type userDTO struct {
+	ID               int64             `json:"id"`
+	Email            string            `json:"email"`
+	CreatedAt        string            `json:"createdAt"`
+	Profile          string            `json:"profile,omitempty"`
+	ProfileAnswers   map[string]string `json:"profileAnswers,omitempty"`
+	ProfileUpdatedAt string            `json:"profileUpdatedAt,omitempty"`
+}
+
+type sessionDTO struct {
+	User      userDTO `json:"user"`
+	Token     string  `json:"token"`
+	ExpiresAt string  `json:"expiresAt"`
+}
+
+type questionDTO struct {
+	ID      string   `json:"id"`
+	Answers []string `json:"answers"`
+}
+
+func toUserDTO(u domain.User) userDTO {
+	out := userDTO{ID: int64(u.ID), Email: u.Email, CreatedAt: u.CreatedAt.UTC().Format(timeFormat), Profile: string(u.Profile), ProfileAnswers: u.ProfileAnswers}
+	if !u.ProfileAt.IsZero() {
+		out.ProfileUpdatedAt = u.ProfileAt.UTC().Format(timeFormat)
+	}
+	return out
+}
+
+type assetKeyDTO struct {
+	Market string `json:"market"`
+	Symbol string `json:"symbol"`
+}
+
+type watchlistDTO struct {
+	ID     int64         `json:"id"`
+	Name   string        `json:"name"`
+	Assets []assetKeyDTO `json:"assets"`
+}
+
+func toWatchlistDTO(w domain.Watchlist) watchlistDTO {
+	out := watchlistDTO{ID: int64(w.ID), Name: w.Name, Assets: make([]assetKeyDTO, len(w.Assets))}
+	for i, k := range w.Assets {
+		out.Assets[i] = assetKeyDTO{Market: string(k.Market), Symbol: string(k.Symbol)}
+	}
+	return out
+}
+
+type watchlistEntryDTO struct {
+	Asset  assetDTO   `json:"asset"`
+	Scores *rankedDTO `json:"scores"` // null when not scored yet
+}
+
+type watchlistEntriesDTO struct {
+	ID         int64               `json:"id"`
+	Name       string              `json:"name"`
+	Profile    string              `json:"profile"`
+	Items      []watchlistEntryDTO `json:"items"`
+	Disclaimer string              `json:"disclaimer"`
 }

@@ -64,7 +64,8 @@ Consequences:
   `analytics` services expose their syncs as routines, which the `jobs`
   adapter runs on a cron), `AnalysisService` (analysis, rankings, outlook),
   `MarketService` (price history, dividends, news and the macro strip for
-  the web app) and `ReportService` (AI reports).
+  the web app), `AccountService` (sign-up, sessions, risk profile),
+  `WatchlistService` and `ReportService` (AI reports).
 - **Driven ports** (`port/driven.go`) are the outside world: repositories
   (`AssetReader`/`AssetWriter`, `PriceReader`/`PriceWriter`,
   `FundamentalReader`/`FundamentalWriter`, `CorporateActionReader`/`Writer`,
@@ -199,6 +200,14 @@ page/component ─▶ composable (useAssets) ─▶ useFetch('/api/assets')
 - **Server state lives in `useFetch`/`useAsyncData`, not in Pinia.** Pinia
   holds client state shared across pages (selected market, UI preferences,
   later the signed-in user). Stores are setup stores (`defineStore('id', () => {...})`).
+- **Auth**: the Go API takes `Authorization: Bearer <session token>`. Only the
+  Nuxt server sees the token: it keeps it in the HttpOnly, SameSite=Lax
+  `shinrin_session` cookie (`server/utils/session.ts`) and `backendFetch`
+  forwards it. `server/middleware/csrf.ts` refuses state-changing `/api`
+  calls whose Origin is not this site. The signed-in user is client state in
+  `useAuthStore`; pages that need one use `definePageMeta({ middleware: 'auth' })`.
+  Every per-user repository call takes the user id, so another user's data
+  is `ErrNotFound`, never readable.
 - **Types**: API types live in `shared/types/api.ts` and must match the Go DTOs
   in `backend/internal/adapter/in/httpapi/dto.go`. Change both in the same PR.
 

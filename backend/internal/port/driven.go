@@ -170,6 +170,57 @@ type ReportWriter interface {
 	SaveReport(ctx context.Context, r domain.Report) (int64, error)
 }
 
+// --- Accounts ----------------------------------------------------------------
+
+// UserRepository stores accounts.
+type UserRepository interface {
+	// CreateUser returns domain.ErrConflict when the email is taken.
+	CreateUser(ctx context.Context, email, passwordHash string) (domain.User, error)
+	// UserByEmail returns the user and their password hash, or
+	// domain.ErrNotFound.
+	UserByEmail(ctx context.Context, email string) (domain.User, string, error)
+	// UserByID returns domain.ErrNotFound for an unknown id.
+	UserByID(ctx context.Context, id domain.UserID) (domain.User, error)
+	// PasswordHash returns the stored hash, or domain.ErrNotFound.
+	PasswordHash(ctx context.Context, id domain.UserID) (string, error)
+	SaveRiskProfile(ctx context.Context, id domain.UserID, p domain.RiskProfile, answers domain.SuitabilityAnswers, at time.Time) error
+	// DeleteUser removes the account and everything it owns (sessions,
+	// watchlists, credentials, reports).
+	DeleteUser(ctx context.Context, id domain.UserID) error
+}
+
+// SessionRepository stores signed-in sessions by token hash.
+type SessionRepository interface {
+	CreateSession(ctx context.Context, s domain.Session) error
+	// SessionByTokenHash returns domain.ErrNotFound for an unknown hash;
+	// expiry is the caller's check.
+	SessionByTokenHash(ctx context.Context, hash []byte) (domain.Session, error)
+	DeleteSession(ctx context.Context, hash []byte) error
+}
+
+// WatchlistRepository stores watchlists. Every call is scoped to the owner,
+// so one user can never read or change another's list: a list owned by
+// someone else is domain.ErrNotFound.
+type WatchlistRepository interface {
+	ListWatchlists(ctx context.Context, user domain.UserID) ([]domain.Watchlist, error)
+	GetWatchlist(ctx context.Context, user domain.UserID, id domain.WatchlistID) (domain.Watchlist, error)
+	// CreateWatchlist returns domain.ErrConflict when the user already has
+	// a list with that name.
+	CreateWatchlist(ctx context.Context, user domain.UserID, name string) (domain.Watchlist, error)
+	RenameWatchlist(ctx context.Context, user domain.UserID, id domain.WatchlistID, name string) error
+	DeleteWatchlist(ctx context.Context, user domain.UserID, id domain.WatchlistID) error
+	// AddWatchlistItem is idempotent.
+	AddWatchlistItem(ctx context.Context, user domain.UserID, id domain.WatchlistID, asset domain.AssetKey) error
+	RemoveWatchlistItem(ctx context.Context, user domain.UserID, id domain.WatchlistID, asset domain.AssetKey) error
+}
+
+// PasswordHasher hashes and checks passwords (argon2id in production).
+type PasswordHasher interface {
+	Hash(password string) (string, error)
+	// Verify reports whether password matches hash.
+	Verify(password, hash string) (bool, error)
+}
+
 // --- Market data providers ---------------------------------------------------
 //
 // One adapter per provider (B3 COTAHIST, CVM, SEC EDGAR, Finnhub, brapi, ...)

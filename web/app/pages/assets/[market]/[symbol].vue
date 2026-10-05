@@ -50,9 +50,12 @@ useHead({ title: () => (asset.value ? `${asset.value.symbol} · Shinrin` : 'Shin
           <UBadge v-if="asset.indexMember" variant="outline" color="primary">{{ t('asset.indexMember') }}</UBadge>
         </div>
       </div>
-      <div v-if="analysis && analysis.price > 0" class="text-end">
-        <p class="text-xs text-muted">{{ t('asset.price') }}</p>
-        <p class="text-2xl font-semibold tabular-nums">{{ formatMoney(analysis.price, currency, locale) }}</p>
+      <div class="flex flex-col items-end gap-2">
+        <div v-if="analysis && analysis.price > 0" class="text-end">
+          <p class="text-xs text-muted">{{ t('asset.price') }}</p>
+          <p class="text-2xl font-semibold tabular-nums">{{ formatMoney(analysis.price, currency, locale) }}</p>
+        </div>
+        <AddToWatchlist :asset="{ market: asset.market, symbol: asset.symbol }" />
       </div>
     </header>
 

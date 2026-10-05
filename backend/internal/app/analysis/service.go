@@ -97,6 +97,10 @@ func (s *Service) Rank(ctx context.Context, f port.RankFilter) ([]port.RankedAss
 	if f.Market != "" {
 		markets = []domain.Market{f.Market}
 	}
+	only := make(map[domain.AssetKey]bool, len(f.Assets))
+	for _, k := range f.Assets {
+		only[k] = true
+	}
 	var out []port.RankedAsset
 	for _, m := range markets {
 		assets, err := s.st.Assets.ListAssets(ctx, port.AssetFilter{Market: m, Class: f.Class})
@@ -113,7 +117,7 @@ func (s *Service) Rank(ctx context.Context, f port.RankFilter) ([]port.RankedAss
 		}
 		for _, sc := range cards {
 			a, ok := byKey[sc.Asset]
-			if !ok || !a.Active {
+			if !ok || !a.Active || (len(only) > 0 && !only[sc.Asset]) {
 				continue
 			}
 			c, cov := engine.Composite(sc, f.Profile)

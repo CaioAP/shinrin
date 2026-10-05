@@ -91,6 +91,10 @@ func TestRank(t *testing.T) {
 	if len(got) != 1 || got[0].Asset.Key != petr {
 		t.Errorf("conservative top = %+v", got)
 	}
+	got, _ = svc.Rank(ctx, port.RankFilter{Profile: domain.ProfileModerate, Assets: []domain.AssetKey{mxrf, vale}})
+	if len(got) != 2 || got[0].Asset.Key == petr || got[1].Asset.Key == petr {
+		t.Errorf("restricted to two assets = %+v", got)
+	}
 }
 
 func TestOutlook(t *testing.T) {

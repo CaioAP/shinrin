@@ -10,6 +10,13 @@ const [{ data: macro, error: macroError }, { data: outlook, error: outlookError 
   useRankings(() => ({ market: 'US', profile: profile.value, limit: 5 })),
 ])
 
+const auth = useAuthStore()
+const lists = auth.signedIn ? await useWatchlists() : undefined
+const firstList = computed(() => lists?.data.value.items[0])
+const { data: firstEntries } = auth.signedIn
+  ? await useWatchlist(() => firstList.value?.id ?? 0, profile)
+  : { data: ref<WatchlistEntries>() }
+
 const tops = computed(() => [
   { market: 'B3' as const, data: b3.value },
   { market: 'US' as const, data: us.value },
@@ -26,6 +33,25 @@ useHead({ title: 'Shinrin' })
       <AnalysisDisclaimer />
       <UButton to="/explore" trailing-icon="i-lucide-arrow-right">{{ t('home.explore') }}</UButton>
     </section>
+
+    <UAlert
+      v-if="auth.signedIn && !auth.user?.profile"
+      color="primary"
+      variant="subtle"
+      icon="i-lucide-gauge"
+      :description="t('home.takeQuestionnaire')"
+      :actions="[{ label: t('settings.take'), to: '/onboarding' }]"
+    />
+
+    <UCard v-if="auth.signedIn && firstList && firstEntries">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold">{{ t('home.myWatchlists') }} · {{ firstList.name }}</h2>
+          <UButton to="/watchlists" variant="link" size="sm">{{ t('home.seeAll') }}</UButton>
+        </div>
+      </template>
+      <WatchlistTable :items="firstEntries.items" @remove="a => lists?.removeAsset(firstList!.id, a)" />
+    </UCard>
 
     <section class="space-y-3">
       <h2 class="text-xl font-semibold">{{ t('home.macro') }}</h2>

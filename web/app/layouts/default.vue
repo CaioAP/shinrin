@@ -3,9 +3,11 @@ const { t, locale, locales, setLocale } = useI18n()
 const { data: meta } = await useMeta()
 const colorMode = useColorMode()
 
+const auth = useAuthStore()
 const nav = computed(() => [
   { label: t('nav.home'), to: '/' },
   { label: t('nav.explore'), to: '/explore' },
+  ...(auth.signedIn ? [{ label: t('nav.watchlists'), to: '/watchlists' }] : []),
 ])
 
 const localeItems = computed(() => locales.value.map(l => ({
@@ -41,6 +43,7 @@ function toggleTheme() {
               @click="toggleTheme"
             />
           </ClientOnly>
+          <UserMenu />
         </div>
       </UContainer>
       <UContainer class="sm:hidden pb-2">

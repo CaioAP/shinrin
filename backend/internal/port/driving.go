@@ -55,6 +55,8 @@ type RankFilter struct {
 	Class   domain.AssetClass
 	Profile domain.RiskProfile
 	Limit   int
+	// Assets, when set, restricts the ranking to these assets.
+	Assets []domain.AssetKey
 }
 
 // RankedAsset is one row of a ranking.
@@ -105,4 +107,46 @@ type MarketService interface {
 	News(ctx context.Context, asset domain.AssetKey, limit int) ([]domain.NewsItem, error)
 	// Macro returns the headline macro numbers and which ones are missing.
 	Macro(ctx context.Context) (domain.MacroStrip, error)
+}
+
+// SessionToken is the secret a browser presents to stay signed in.
+type SessionToken struct {
+	Value     string
+	ExpiresAt time.Time
+}
+
+// AccountService handles sign-up, sign-in, sessions and the risk profile.
+type AccountService interface {
+	// SignUp returns domain.ErrConflict when the email has an account.
+	SignUp(ctx context.Context, email, password string) (domain.User, SessionToken, error)
+	// SignIn returns domain.ErrUnauthorized for any wrong email or password.
+	SignIn(ctx context.Context, email, password string) (domain.User, SessionToken, error)
+	SignOut(ctx context.Context, token string) error
+	// Authenticate returns domain.ErrUnauthorized for an unknown or expired
+	// token.
+	Authenticate(ctx context.Context, token string) (domain.User, error)
+	SetRiskProfile(ctx context.Context, user domain.UserID, answers domain.SuitabilityAnswers) (domain.User, error)
+	// DeleteAccount needs the password again; it returns
+	// domain.ErrUnauthorized when it is wrong.
+	DeleteAccount(ctx context.Context, user domain.UserID, password string) error
+}
+
+// WatchlistEntry is one asset of a watchlist with its scores, when scored.
+type WatchlistEntry struct {
+	Asset  domain.Asset
+	Ranked *RankedAsset // nil when the asset has not been scored yet
+}
+
+// WatchlistService manages a user's watchlists.
+type WatchlistService interface {
+	List(ctx context.Context, user domain.UserID) ([]domain.Watchlist, error)
+	Create(ctx context.Context, user domain.UserID, name string) (domain.Watchlist, error)
+	Rename(ctx context.Context, user domain.UserID, id domain.WatchlistID, name string) error
+	Delete(ctx context.Context, user domain.UserID, id domain.WatchlistID) error
+	// AddAsset returns domain.ErrNotFound for an asset Shinrin does not track.
+	AddAsset(ctx context.Context, user domain.UserID, id domain.WatchlistID, asset domain.AssetKey) error
+	RemoveAsset(ctx context.Context, user domain.UserID, id domain.WatchlistID, asset domain.AssetKey) error
+	// Entries returns the list's assets with scores for the profile, best
+	// composite first, unscored assets last.
+	Entries(ctx context.Context, user domain.UserID, id domain.WatchlistID, profile domain.RiskProfile) (domain.Watchlist, []WatchlistEntry, error)
 }

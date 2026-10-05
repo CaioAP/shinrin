@@ -182,3 +182,54 @@ export interface MacroStrip {
   /** Indicators that could not be computed from stored data. */
   missing: MacroCode[]
 }
+
+// Accounts and watchlists (backend/internal/adapter/in/httpapi/auth.go,
+// watchlists.go). The session token never reaches the browser: Nuxt keeps
+// it in an HttpOnly cookie.
+
+export interface User {
+  id: number
+  email: string
+  createdAt: string
+  profile?: RiskProfile
+  profileAnswers?: Record<string, string>
+  profileUpdatedAt?: string
+}
+
+/** Server-side only: what Go returns on sign-in. */
+export interface Session {
+  user: User
+  token: string
+  expiresAt: string
+}
+
+export interface Question {
+  id: string
+  /** Answer codes from the most cautious to the boldest. */
+  answers: string[]
+}
+
+export interface AssetKey {
+  market: Market
+  symbol: string
+}
+
+export interface Watchlist {
+  id: number
+  name: string
+  assets: AssetKey[]
+}
+
+export interface WatchlistEntry {
+  asset: Asset
+  /** null until the asset has been scored. */
+  scores: RankedAsset | null
+}
+
+export interface WatchlistEntries {
+  id: number
+  name: string
+  profile: RiskProfile
+  items: WatchlistEntry[]
+  disclaimer: string
+}

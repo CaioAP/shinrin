@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 
@@ -104,7 +105,7 @@ func TestRankingsAndOutlook(t *testing.T) {
 	h := analysisServer(f)
 	rec := do(t, h, "/api/v1/rankings?market=US&class=reit&profile=conservative&limit=10")
 	want := port.RankFilter{Market: domain.MarketUS, Class: domain.ClassREIT, Profile: domain.ProfileConservative, Limit: 10}
-	if rec.Code != http.StatusOK || f.gotFilter != want {
+	if rec.Code != http.StatusOK || !reflect.DeepEqual(f.gotFilter, want) {
 		t.Fatalf("status %d, filter %+v", rec.Code, f.gotFilter)
 	}
 	body := decode(t, rec.Body)

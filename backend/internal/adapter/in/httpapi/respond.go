@@ -30,6 +30,12 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, domain.ErrInvalid):
 		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, domain.ErrConflict):
+		writeError(w, http.StatusConflict, "conflict")
+	case errors.Is(err, domain.ErrUnauthorized):
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+	case errors.Is(err, domain.ErrRateLimited):
+		writeError(w, http.StatusTooManyRequests, domain.ErrRateLimited.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "internal error")
 	}

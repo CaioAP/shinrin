@@ -17,6 +17,8 @@ type Deps struct {
 	Catalog  port.CatalogService
 	Analysis port.AnalysisService
 	Market   port.MarketService
+	Accounts port.AccountService
+	Lists    port.WatchlistService
 	Logger   *slog.Logger
 	// Now is the clock for relative ranges; nil means time.Now.
 	Now func() time.Time
@@ -32,6 +34,9 @@ func NewRouter(d Deps) http.Handler {
 		now = time.Now
 	}
 	mk := marketHandler{svc: d.Market, now: now}
+	au := authHandler{svc: d.Accounts}
+	wl := watchlistHandler{svc: d.Lists}
+	user := au.requireUser
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", sys.health)
@@ -45,6 +50,22 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /api/v1/macro", mk.macro)
 	mux.HandleFunc("GET /api/v1/rankings", an.rank)
 	mux.HandleFunc("GET /api/v1/outlook", an.outlook)
+	mux.HandleFunc("GET /api/v1/risk-questionnaire", questionnaire)
+
+	mux.HandleFunc("POST /api/v1/auth/signup", au.signUp)
+	mux.HandleFunc("POST /api/v1/auth/signin", au.signIn)
+	mux.HandleFunc("POST /api/v1/auth/signout", au.signOut)
+	mux.HandleFunc("GET /api/v1/me", user(au.me))
+	mux.HandleFunc("PUT /api/v1/me/risk-profile", user(au.setRiskProfile))
+	mux.HandleFunc("DELETE /api/v1/me", user(au.deleteAccount))
+
+	mux.HandleFunc("GET /api/v1/watchlists", user(wl.list))
+	mux.HandleFunc("POST /api/v1/watchlists", user(wl.create))
+	mux.HandleFunc("GET /api/v1/watchlists/{id}", user(wl.get))
+	mux.HandleFunc("PATCH /api/v1/watchlists/{id}", user(wl.rename))
+	mux.HandleFunc("DELETE /api/v1/watchlists/{id}", user(wl.remove))
+	mux.HandleFunc("PUT /api/v1/watchlists/{id}/items/{market}/{symbol}", user(wl.addItem))
+	mux.HandleFunc("DELETE /api/v1/watchlists/{id}/items/{market}/{symbol}", user(wl.removeItem))
 
 	return chain(mux, recoverer(d.Logger), requestLogger(d.Logger))
 }
