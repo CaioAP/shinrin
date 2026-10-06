@@ -90,3 +90,22 @@ func TestSeriesGivesUpOnPersistentHTML(t *testing.T) {
 		t.Errorf("calls = %d, want 3", calls)
 	}
 }
+
+func TestSeriesErrorObject(t *testing.T) {
+	status := 404
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"erro":{"statusCode":%d,"detail":"Value(s) not found"}}`, status)
+	}))
+	defer srv.Close()
+
+	c := bcb.New(srv.Client(), srv.URL)
+	got, err := c.Series(context.Background(), domain.SeriesUSDBRL, time.Now())
+	if err != nil || len(got) != 0 {
+		t.Errorf("empty window: points = %d, err = %v", len(got), err)
+	}
+	status = 500
+	if _, err := c.Series(context.Background(), domain.SeriesUSDBRL, time.Now()); err == nil || !strings.Contains(err.Error(), "error 500") {
+		t.Errorf("err = %v", err)
+	}
+}

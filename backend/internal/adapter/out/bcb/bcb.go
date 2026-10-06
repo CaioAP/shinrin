@@ -122,7 +122,7 @@ func (c *Client) fetch(ctx context.Context, series string, code int, from, to ti
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil // SGS answers 404 for a window with no observations
+		return nil, nil // SGS answers 404 for a window with no observations, or 200 with an error object (sgsError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("sgs %d: status %s", code, resp.Status)
@@ -130,6 +130,9 @@ func (c *Client) fetch(ctx context.Context, series string, code int, from, to ti
 	body := bufio.NewReader(io.LimitReader(resp.Body, 32<<20))
 	if first, _ := body.Peek(1); len(first) == 1 && first[0] == '<' {
 		return nil, fmt.Errorf("sgs %d: %w", code, errNotJSON)
+	}
+	if first, _ := body.Peek(1); len(first) == 1 && first[0] == '{' {
+		return nil, sgsError(code, body)
 	}
 	var rows []struct {
 		Data  string `json:"data"`
@@ -151,4 +154,23 @@ func (c *Client) fetch(ctx context.Context, series string, code int, from, to ti
 		out = append(out, domain.MacroPoint{Series: series, Date: d, Value: v, Source: sourceName})
 	}
 	return out, nil
+}
+
+// sgsError reads the error object SGS sends with status 200. A 404 inside it
+// means the window has no observations (a weekend or holiday for daily
+// series), which is not an error.
+func sgsError(code int, body io.Reader) error {
+	var e struct {
+		Erro struct {
+			StatusCode int    `json:"statusCode"`
+			Detail     string `json:"detail"`
+		} `json:"erro"`
+	}
+	if err := json.NewDecoder(body).Decode(&e); err != nil {
+		return fmt.Errorf("sgs %d: decode: %w", code, err)
+	}
+	if e.Erro.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	return fmt.Errorf("sgs %d: error %d: %s", code, e.Erro.StatusCode, e.Erro.Detail)
 }
