@@ -1,0 +1,104 @@
+# Production stack for one server (docs/deploy.md). Nothing listens on a
+# public port: Cloudflare Tunnel connects out to Cloudflare and serves the web
+# app on your subdomain over HTTPS. Postgres and the Go API are reachable only
+# inside this Docker network.
+#
+#   cd deploy && cp .env.example .env && cp shinrin.env.example shinrin.env
+#   # fill both in; never commit them
+#   docker compose up -d --build
+name: shinrin
+
+x-backend: &backend
+  build: ../backend
+  image: shinrin-backend
+  restart: unless-stopped
+  env_file: shinrin.env
+  environment:
+    SHINRIN_DATABASE_URL: postgres://shinrin:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/shinrin?sslmode=disable
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shinrin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: shinrin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shinrin -d shinrin"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Applies Shinrin's and River's migrations, then exits. api and worker
+  # start only after it succeeds.
+  migrate:
+    <<: *backend
+    command: ["migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    command: ["api"]
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+
+  web:
+    build: ../web
+    image: shinrin-web
+    restart: unless-stopped
+    environment:
+      NUXT_API_BASE: http://api:8080
+    depends_on:
+      - api
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - web
+
+  # Nightly pg_dump into ./backups (kept 14 days). docs/deploy.md shows how
+  # to copy them off the server.
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: shinrin
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      PGDATABASE: shinrin
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          now=$$(date -u +%H%M)
+          if [ "$$now" = "0600" ]; then
+            f=/backups/shinrin-$$(date -u +%Y%m%d).dump
+            pg_dump -Fc -f "$$f.tmp" && mv "$$f.tmp" "$$f" && echo "backup $$f"
+            find /backups -name 'shinrin-*.dump' -mtime +14 -delete
+            sleep 60
+          fi
+          sleep 30
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

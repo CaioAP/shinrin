@@ -142,8 +142,41 @@ every figure.
 Screenshots (sample report inserted for the screenshot, since the test key
 was fake): `img/04-ai-settings.png`, `img/04-ai-report.png`.
 
+## Slice 4: deploy setup
+
+Caio already hosts his blog and other projects on Cloudflare, so the first
+question was what Shinrin would cost there. Pricing it out: the Nuxt app fits
+Workers, but the Go API and worker would need a Cloudflare Container (about
+US$5 a month if it sleeps between uses, about US$13 always on), and Cloudflare
+doesn't host Postgres, so the database would be another bill. He chose Oracle
+Cloud's Always Free Ampere server instead, with his Cloudflare domain in front.
+
+### Decisions worth writing about
+
+1. **A tunnel instead of open ports.** `cloudflared` runs next to the app and
+   dials out to Cloudflare, so the server exposes nothing but SSH. HTTPS
+   certificates, caching and DDoS protection come from Cloudflare, and there
+   is no reverse proxy to maintain.
+2. **One image, every role.** The Go binary is the API, the worker, the
+   migrator and the one-off routine runner, so one distroless image (about
+   30 MB) covers all of them. Migrations and the time zone database are
+   embedded, which matters because the worker's schedules run on São Paulo
+   time and the minimal image has no tzdata of its own.
+3. **Migrations as a gate.** A one-shot `migrate` service runs first and the
+   API and worker start only if it exits cleanly, so a bad migration stops the
+   deploy instead of half-starting it.
+4. **Build on the server.** Oracle's free machines are arm64. Building there
+   avoids cross-compiling Node dependencies, and CI still builds both images
+   on every push so a broken Dockerfile is caught early.
+5. **Free has fine print.** Oracle cut the free Ampere allowance in half in
+   2026 and can reclaim servers that look idle. The guide sizes the server
+   inside the new limits and suggests the pay-as-you-go upgrade, which keeps
+   Always Free resources free and stops the idle reclaim.
+
 ### Still to do in later slices
 
+- Publish images from CI and deploy on merge.
+- Copy backups off the server automatically.
 - Run report generation as a background job, estimate cost per run.
 - Data freshness / routine status page.
 - Engine notes are English-only strings; give them codes like the signals so

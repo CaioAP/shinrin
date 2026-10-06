@@ -290,6 +290,8 @@ The risk profile is a cookie-backed Pinia preference until accounts exist. New G
 - GitHub Actions: lint, test, build images, deploy on merge to main.
 - Daily Postgres backups to object storage.
 
+**As built (phase 4, slice 4).** Caio chose Oracle Cloud's Always Free tier (an Ampere arm64 server) with his existing Cloudflare account in front. `deploy/compose.yml` runs Postgres, a one-shot `migrate`, `api`, `worker`, the Nuxt `web` app, `cloudflared` and a nightly `pg_dump` container. The only public entry is a Cloudflare Tunnel to `web:3000`, so the server opens no web ports and Cloudflare provides HTTPS on his subdomain; the Go API and Postgres stay on the private Docker network. One Go image (`backend/Dockerfile`, distroless, with migrations and the time zone database embedded) serves every role. Images build on the server itself (native arm64), and CI builds both images on every push so a broken Dockerfile shows up before deploy. Step-by-step guide: `docs/deploy.md`. Not yet: publishing images from CI, deploy on merge, off-server backup copies.
+
 ## 13. Regulatory note (Brazil)
 
 In Brazil, publishing securities recommendations is regulated (CVM Resolução 20, securities analysts) and personalized investment advice is regulated too (CVM Resolução 19, consultants). This is an inference from the rules' scope, not legal advice. To stay on the safe side:
