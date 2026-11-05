@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,5 +43,69 @@ func TestSeriesChunksAndParses(t *testing.T) {
 	}
 	if _, err := c.Series(context.Background(), "gdp", time.Now()); err == nil {
 		t.Error("unknown series should fail")
+	}
+}
+
+func TestSeriesRetriesHTMLPage(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, "<html>busy</html>")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `[{"data":"02/01/2025","valor":"12.25"}]`)
+	}))
+	defer srv.Close()
+
+	c := bcb.New(srv.Client(), srv.URL)
+	c.SetBackoff(time.Millisecond)
+	got, err := c.Series(context.Background(), domain.SeriesSelicTarget, time.Now().AddDate(0, -1, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 || len(got) != 1 {
+		t.Errorf("calls = %d, points = %d", calls, len(got))
+	}
+}
+
+func TestSeriesGivesUpOnPersistentHTML(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, "<html>busy</html>")
+	}))
+	defer srv.Close()
+
+	c := bcb.New(srv.Client(), srv.URL)
+	c.SetBackoff(time.Millisecond)
+	_, err := c.Series(context.Background(), domain.SeriesSelicTarget, time.Now().AddDate(0, -1, 0))
+	if err == nil || !strings.Contains(err.Error(), "non-JSON") {
+		t.Errorf("err = %v", err)
+	}
+	if calls != 3 {
+		t.Errorf("calls = %d, want 3", calls)
+	}
+}
+
+func TestSeriesErrorObject(t *testing.T) {
+	status := 404
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"erro":{"statusCode":%d,"detail":"Value(s) not found"}}`, status)
+	}))
+	defer srv.Close()
+
+	c := bcb.New(srv.Client(), srv.URL)
+	got, err := c.Series(context.Background(), domain.SeriesUSDBRL, time.Now())
+	if err != nil || len(got) != 0 {
+		t.Errorf("empty window: points = %d, err = %v", len(got), err)
+	}
+	status = 500
+	if _, err := c.Series(context.Background(), domain.SeriesUSDBRL, time.Now()); err == nil || !strings.Contains(err.Error(), "error 500") {
+		t.Errorf("err = %v", err)
 	}
 }
