@@ -115,9 +115,13 @@ Open `https://shinrin.<your-domain>`.
 ## 5. First data load
 
 The worker keeps data fresh on its schedule, but the first load is run once,
-in this order (the same as the README):
+in this order (the same as the README). Some steps run for hours, and a run
+stops if your SSH connection drops, so start them inside `tmux`
+(`Ctrl-b d` detaches, `tmux attach -t load` comes back):
 
 ```bash
+tmux new -s load
+cd ~/shinrin/deploy
 docker compose run --rm worker run ibov_members sp500_members
 docker compose run --rm worker run b3_prices_eod b3_corporate_actions cvm_fundamentals
 docker compose run --rm worker run us_prices_eod sec_fundamentals
@@ -128,7 +132,10 @@ docker compose run --rm worker run scoring
 ```
 
 US prices follow Tiingo's free quota (about 50 tickers an hour), so the first
-S&P 500 backfill takes most of a day; the worker continues it on schedule.
+S&P 500 backfill takes most of a day; the worker continues it on schedule,
+so `us_prices_eod` can also be skipped here. To stop idle SSH sessions from
+dropping, add `ServerAliveInterval 60` to the server's entry in
+`~/.ssh/config` on your computer.
 
 ## Updating
 
